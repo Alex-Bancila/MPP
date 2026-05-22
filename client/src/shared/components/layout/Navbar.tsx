@@ -54,6 +54,15 @@ export const Navbar = () => {
             {unreadMessageCount > 0 ? <span className="mc-navbar__badge">{unreadMessageCount}</span> : null}
           </button>
         )}
+        {currentUser?.role === 'admin' && (
+          <button
+            className="mc-button mc-button--ghost"
+            onClick={() => navigate('/admin')}
+            aria-label="Admin Dashboard"
+          >
+            Admin
+          </button>
+        )}
         <button
           className="mc-button mc-button--primary mc-navbar__sell"
           onClick={() => {
@@ -88,7 +97,6 @@ export const Navbar = () => {
               navigate('/login')
               return
             }
-
             navigate(`/profile/${currentUser.username}`)
           }}
           aria-label={currentUser ? `${currentUser.username} profile` : 'Login'}

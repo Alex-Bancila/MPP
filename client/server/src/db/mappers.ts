@@ -29,9 +29,9 @@ export const mapUser = (user: PrismaUser): User => ({
   passwordHash: user.passwordHash,
   avatarUrl: user.avatarUrl,
   createdAt: toIso(user.createdAt),
-  role: user.roleId === 'role_admin' ? 'admin' : 'user',
+  role: user.roleId === 'admin' ? 'admin' : 'user',
   permissions:
-    user.roleId === 'role_admin'
+    user.roleId === 'admin'
       ? [
           'listing:create',
           'listing:update',

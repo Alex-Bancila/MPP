@@ -99,8 +99,11 @@ const logAction = async (
       details,
     })
 
-    const recentCount = context.store.state.messages.filter(
-      (m) => m.senderId === userId && Date.now() - new Date(m.createdAt).getTime() < 60000,
+    const recentCount = context.store.logs.filter(
+      (log) =>
+        log.userId === userId &&
+        log.action === action &&
+        Date.now() - new Date(log.createdAt).getTime() < 60000,
     ).length
 
     await context.auditService.detectMaliciousBehavior({

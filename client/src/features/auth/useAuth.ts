@@ -1,5 +1,4 @@
-import { useMemo } from 'react'
-
+import { useMemo, useEffect, useRef } from 'react'
 import { useAppStore } from '@/app/store/useAppStore'
 import { getCurrentUser } from '@/app/store/selectors'
 import type { LoginFormValues, RegisterFormValues } from '@/features/auth/authSchema'
@@ -7,14 +6,47 @@ import {
   getServerReachable,
   loginServerUser,
   registerServerUser,
+  setAuthToken,
 } from '@/features/sync/serverClient'
 import { initialAppState } from '@/shared/data/seed'
 import { hashPassword, verifyPassword } from '@/shared/utils/hash'
 
+const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+
 export const useAuth = () => {
   const { state, dispatch } = useAppStore()
-
   const currentUser = useMemo(() => getCurrentUser(state), [state])
+  const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const logout = () => {
+    setAuthToken(null)
+    dispatch({ type: 'auth/logout' })
+  }
+
+  // Inactivity logout
+  useEffect(() => {
+    if (!currentUser) return
+
+    const resetTimer = () => {
+      if (inactivityTimer.current) {
+        clearTimeout(inactivityTimer.current)
+      }
+      inactivityTimer.current = setTimeout(() => {
+        logout()
+      }, INACTIVITY_TIMEOUT_MS)
+    }
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart']
+    events.forEach((event) => window.addEventListener(event, resetTimer))
+    resetTimer()
+
+    return () => {
+      events.forEach((event) => window.removeEventListener(event, resetTimer))
+      if (inactivityTimer.current) {
+        clearTimeout(inactivityTimer.current)
+      }
+    }
+  }, [currentUser])
 
   const loginLocal = (values: LoginFormValues): { ok: boolean; message?: string } => {
     const email = values.email.trim().toLowerCase()
@@ -23,10 +55,7 @@ export const useAuth = () => {
     if (!user || !verifyPassword(values.password, user.passwordHash)) {
       return { ok: false, message: 'Invalid email or password.' }
     }
-    dispatch({
-      type: 'auth/login',
-      payload: { userId: user.id, user },
-    })
+    dispatch({ type: 'auth/login', payload: { userId: user.id, user } })
     return { ok: true }
   }
 
@@ -53,20 +82,12 @@ export const useAuth = () => {
       createdAt: new Date().toISOString(),
       role: 'user' as const,
       permissions: [
-        'listing:create',
-        'listing:update',
-        'listing:delete',
-        'review:create',
-        'review:update',
-        'review:delete',
-        'favourite:toggle',
-        'chat:send',
+        'listing:create', 'listing:update', 'listing:delete',
+        'review:create', 'review:update', 'review:delete',
+        'favourite:toggle', 'chat:send',
       ],
     }
-    dispatch({
-      type: 'auth/register',
-      payload: newUser,
-    })
+    dispatch({ type: 'auth/register', payload: newUser })
     return { ok: true }
   }
 
@@ -75,13 +96,9 @@ export const useAuth = () => {
     if (!serverReachable) {
       return registerLocal(values)
     }
-
     try {
       const user = await registerServerUser(values)
-      dispatch({
-        type: 'auth/register',
-        payload: user,
-      })
+      dispatch({ type: 'auth/register', payload: user })
       return { ok: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registration failed.'
@@ -94,13 +111,9 @@ export const useAuth = () => {
     if (!serverReachable) {
       return loginLocal(values)
     }
-
     try {
       const user = await loginServerUser(values)
-      dispatch({
-        type: 'auth/login',
-        payload: { userId: user.id, user },
-      })
+      dispatch({ type: 'auth/login', payload: { userId: user.id, user } })
       return { ok: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Invalid email or password.'
@@ -108,14 +121,5 @@ export const useAuth = () => {
     }
   }
 
-  const logout = () => {
-    dispatch({ type: 'auth/logout' })
-  }
-
-  return {
-    currentUser,
-    register,
-    login,
-    logout,
-  }
+  return { currentUser, register, login, logout }
 }

@@ -37,6 +37,28 @@ const resolveApiBaseUrl = (): string => {
 
 const API_BASE_URL = resolveApiBaseUrl()
 
+// Token management
+let authToken: string | null = null
+
+export const setAuthToken = (token: string | null): void => {
+  authToken = token
+  if (token) {
+    localStorage.setItem('music-core.token', token)
+  } else {
+    localStorage.removeItem('music-core.token')
+  }
+}
+
+export const getAuthToken = (): string | null => {
+  if (authToken) return authToken
+  try {
+    authToken = localStorage.getItem('music-core.token')
+  } catch {
+    authToken = null
+  }
+  return authToken
+}
+
 /** Turn http(s) origin into ws(s) URL including /ws path. */
 const httpBaseToWebSocketUrl = (httpBase: string): string => {
   const trimmed = httpBase.replace(/\/$/, '')
@@ -97,16 +119,13 @@ export const getWebSocketUrl = (): string => {
         }
       }
       const url = `ws://${window.location.hostname}:3001/ws`
-      console.log('[WS] direct url:', url)  // ADD THIS
       return url
     }
     const url = httpBaseToWebSocketUrl(window.location.origin)
-    console.log('[WS] proxy url:', url)  // ADD THIS
     return url
   }
 
   const url = httpBaseToWebSocketUrl(window.location.origin)
-  console.log('[WS] prod url:', url)  // ADD THIS
   return url
 }
 
@@ -119,8 +138,16 @@ const buildUrl = (path: string): string => {
 const fetchWithTimeout = async (url: string, options: RequestInit, timeout = REQUEST_TIMEOUT): Promise<Response> => {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeout)
+  const token = getAuthToken()
   try {
-    return await fetch(url, { ...options, signal: controller.signal })
+    return await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      signal: controller.signal,
+    })
   } finally {
     clearTimeout(timer)
   }
@@ -336,6 +363,9 @@ export const loginServerUser = async (input: { email: string; password: string }
   }
 
   const data = await response.json()
+  if (data.token) {
+    setAuthToken(data.token)
+  }
   return mapAuthUser(data)
 }
 
@@ -375,6 +405,9 @@ export const registerServerUser = async (input: {
   }
 
   const data = await response.json()
+  if (data.token) {
+    setAuthToken(data.token)
+  }
   return mapAuthUser(data)
 }
 

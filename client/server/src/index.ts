@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { buildApp } from './app'
 
 const start = async () => {
@@ -7,8 +9,8 @@ const start = async () => {
   const host = process.env.HOST ?? '0.0.0.0'
 
   try {
-    await app.listen({ port, host })  
-    console.log(`Server running on http://${host}:${port}`)
+    await app.listen({ port, host })
+    console.log(`Server running on https://${host}:${port}`)
   } catch (error) {
     console.error('[Server] Failed to start:', error)
     process.exit(1)

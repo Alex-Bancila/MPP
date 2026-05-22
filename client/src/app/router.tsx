@@ -15,6 +15,7 @@ import { StatsPage } from '@/pages/StatsPage'
 import { AppLayout } from '@/shared/components/layout/AppLayout'
 import { AuthLayout } from '@/shared/components/layout/AuthLayout'
 import { LandingLayout } from '@/shared/components/layout/LandingLayout'
+import { AdminPage } from '@/pages/AdminPage'
 
 export const appRouter = createBrowserRouter([
   {
@@ -33,6 +34,14 @@ export const appRouter = createBrowserRouter([
       </AuthLayout>
     ),
   },
+  {
+  path: '/admin',
+  element: (
+    <AppLayout>
+      <AdminPage />
+    </AppLayout>
+  ),
+},
   {
     path: '/forgot-password',
     element: (
