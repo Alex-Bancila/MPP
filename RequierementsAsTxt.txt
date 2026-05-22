@@ -1,0 +1,82 @@
+Requierements:
+Music-core
+"A chug for your breakdown"
+Requirements Document — SDI Assignment 0
+
+
+1. Overview
+Music-core is a peer-to-peer marketplace for buying and selling music-related goods. It targets musicians, collectors, and enthusiasts — with a particular focus on the underground and heavy music scene.
+Users can list items for sale, browse by category, communicate with sellers, and manage their own listings.
+
+2. Target Users
+    • Musicians looking to buy or sell instruments and equipment
+    • Collectors seeking vinyls, CDs, and cassettes
+    • Learners looking for music theory books and courses
+    • Anyone in the heavy music scene (metalcore, deathcore, post-hardcore, etc.)
+
+3. Product Categories
+Every listing belongs to exactly one of the following five categories:
+
+Category	Examples
+Listening	Vinyls, CDs, cassettes, digital downloads
+Creating	Instruments: guitars, basses, drums, keyboards, brass, wind, etc.
+Electrify Your Sound	Pedals, amplifiers, modulators, cables, DI boxes
+Learning	Music theory books, lesson courses, sheet music
+Accessories	Straps, picks, cases, tuners, stands, merchandise
+
+4. Functional Requirements
+4.1 Authentication
+    • Users can register with a username, email address, and password
+    • Users can log in and log out
+    • Passwords are stored securely (hashed)
+
+4.2 Listings (Core Entity)
+A listing represents an item put up for sale by a user. It contains:
+
+Field	Type	Notes
+Title	Text	Short name of the item
+Description	Long text	Condition, history, details
+Price	Number	In RON (Romanian leu)
+Category	Enum	One of the 5 categories above
+Photos	Images	At least one required
+Seller	User ref	Linked to the user who posted
+Date posted	Timestamp	Auto-generated on creation
+Status	Enum	Active / Sold
+
+Users can perform the following actions on listings (CRUD):
+    • Create — post a new listing
+    • Read — view a listing's full detail page
+    • Update — edit their own listing (price, description, photos)
+    • Delete — remove their own listing
+
+4.3 Browsing & Discovery
+    • All listings are shown in reverse chronological order (newest first)
+    • Users can filter listings by category
+    • Users can search listings by keyword (title, description)
+    • The listing page is paginated
+
+4.4 Messaging
+    • Registered users can send private messages to a seller about a listing
+    • Conversations are tied to a specific listing
+
+4.5 Favourites
+    • Users can save listings to a personal favourites list
+    • Favourites are visible on the user's profile
+
+4.6 User Profile
+    • Each user has a public profile showing their username and profile picture
+    • The profile displays all active listings by that user
+
+5. Non-Functional Requirements
+    • The application is a web application accessible via desktop browser
+    • The UI follows a dark theme with high-contrast accent colours
+    • The design is clean, minimal, and fast to navigate
+
+6. Out of Scope
+The following are explicitly excluded to keep the scope manageable:
+    • In-app payment processing (users arrange payment externally)
+    • Shipping / logistics tracking
+    • Reviews and ratings (may be added in a future version)
+
+Music-core · SDI Assignment 0 · Requirements Document
+

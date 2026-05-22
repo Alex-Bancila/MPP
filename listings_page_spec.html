@@ -1,0 +1,163 @@
+
+<style>
+  .spec { font-family: monospace; padding: 16px 0; }
+  .page-title { font-size: 20px; font-weight: 500; color: var(--color-text-primary); border-bottom: 2px solid #C0392B; padding-bottom: 8px; margin-bottom: 16px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 13px; font-weight: 500; color: #C0392B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .card { background: var(--color-background-secondary); border-radius: 8px; padding: 12px; border: 0.5px solid var(--color-border-tertiary); }
+  .label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .value { font-size: 13px; color: var(--color-text-primary); }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: middle; border: 0.5px solid var(--color-border-tertiary); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; align-items: center; }
+  .tag { font-size: 11px; background: var(--color-background-tertiary); border-radius: 4px; padding: 2px 8px; color: var(--color-text-secondary); }
+</style>
+<div class="spec">
+  <div class="page-title">04 — Listings Page (Browse)</div>
+
+  <div class="section">
+    <div class="section-title">Navbar (shared across all logged-in pages)</div>
+    <div class="row">
+      <span class="tag">Height: 64px</span>
+      <span class="tag">Background: #1A1A1A</span>
+      <span class="tag">Bottom border: 1px solid #3A3A3A</span>
+      <span class="tag">Padding: 0 64px</span>
+      <span class="tag">Logo left: Cinzel Decorative 24px #C0392B</span>
+      <span class="tag">Right: "Sell" button + avatar</span>
+    </div>
+    <div style="margin-top:8px;">
+      <div class="label" style="margin-bottom:6px;">Sell button</div>
+      <div class="row">
+        <span class="tag">Background: #C0392B</span>
+        <span class="tag">Text: "Sell" Inter 14px 600 #F0F0F0</span>
+        <span class="tag">Padding: 8px 20px</span>
+        <span class="tag">Border radius: 6px</span>
+        <span class="tag">Hover: #E74C3C</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">User avatar</div>
+      <div class="row">
+        <span class="tag">Size: 36px circle</span>
+        <span class="tag">Border: 2px solid #3A3A3A</span>
+        <span class="tag">Margin-left: 12px from Sell</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">View Toggle (Browse / Statistics)</div>
+    <div class="grid2">
+      <div class="card"><div class="label">Active tab (Browse Listings)</div><div class="value">Background: #C0392B, Text: #F0F0F0, Border radius: 9999px</div></div>
+      <div class="card"><div class="label">Inactive tab (Statistics)</div><div class="value">Background: transparent, Text: #9E9E9E, Border: 1px solid #3A3A3A, Border radius: 9999px</div></div>
+      <div class="card"><div class="label">Tab padding</div><div class="value">8px 20px</div></div>
+      <div class="card"><div class="label">Font</div><div class="value">Inter 14px 500</div></div>
+      <div class="card"><div class="label">Gap between tabs</div><div class="value">8px</div></div>
+      <div class="card"><div class="label">Margin below navbar</div><div class="value">24px</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Search Bar</div>
+    <div class="row">
+      <span class="tag">Width: 100% (minus 128px page padding)</span>
+      <span class="tag">Height: 48px</span>
+      <span class="tag">Background: #242424</span>
+      <span class="tag">Border: 1px solid #3A3A3A</span>
+      <span class="tag">Border radius: 9999px</span>
+      <span class="tag">Padding: 0 20px</span>
+      <span class="tag">Icon: search, #555555, 18px, left side</span>
+      <span class="tag">Placeholder: "Search for instruments, gear, accessories..." #555555</span>
+      <span class="tag">Focus border: #C0392B</span>
+      <span class="tag">Margin-bottom: 24px</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Category Filter Pills</div>
+    <div class="grid2">
+      <div class="card"><div class="label">Options</div><div class="value">All / Listening / Creating / Electrify Your Sound / Learning / Accessories</div></div>
+      <div class="card"><div class="label">Active state</div><div class="value">Background: #C0392B, Text: #F0F0F0</div></div>
+      <div class="card"><div class="label">Inactive state</div><div class="value">Background: transparent, Text: #9E9E9E, Border: 1px solid #3A3A3A</div></div>
+      <div class="card"><div class="label">Hover state</div><div class="value">Background: #2E2E2E, Text: #F0F0F0, Border: #555555</div></div>
+      <div class="card"><div class="label">Padding</div><div class="value">6px 16px</div></div>
+      <div class="card"><div class="label">Border radius</div><div class="value">9999px</div></div>
+      <div class="card"><div class="label">Font</div><div class="value">Inter 13px 400</div></div>
+      <div class="card"><div class="label">Gap between pills</div><div class="value">8px</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Listing Cards Grid</div>
+    <div class="grid3">
+      <div class="card"><div class="label">Columns</div><div class="value">3 equal columns</div></div>
+      <div class="card"><div class="label">Gap</div><div class="value">32px</div></div>
+      <div class="card"><div class="label">Margin-top from pills</div><div class="value">24px</div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="label" style="margin-bottom:6px;">Each card</div>
+      <div class="row">
+        <span class="tag">Background: #242424</span>
+        <span class="tag">Border radius: 8px</span>
+        <span class="tag">Shadow: 0 4px 16px rgba(0,0,0,0.4)</span>
+        <span class="tag">Hover bg: #2E2E2E</span>
+        <span class="tag">Hover border: 1px solid #3A3A3A</span>
+        <span class="tag">Hover shadow: 0 8px 24px rgba(0,0,0,0.6)</span>
+        <span class="tag">Cursor: pointer</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Card image</div>
+      <div class="row">
+        <span class="tag">Height: 220px</span>
+        <span class="tag">Width: 100%</span>
+        <span class="tag">Object-fit: cover</span>
+        <span class="tag">Border radius: 8px 8px 0 0</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Card body padding: 16px</div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Item title</div>
+      <div class="row">
+        <span class="tag">Font: Inter 16px 600</span>
+        <span class="tag">Color: #F0F0F0</span>
+        <span class="tag">Margin-bottom: 8px</span>
+        <span class="tag">1 line max, overflow ellipsis</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Price</div>
+      <div class="row">
+        <span class="tag">Font: Inter 16px 700</span>
+        <span class="tag">Color: #C0392B</span>
+        <span class="tag">Margin-bottom: 12px</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Bottom row (category tag + seller)</div>
+      <div class="row">
+        <span class="tag">Layout: space-between</span>
+        <span class="tag">Category tag bg: #2E2E2E</span>
+        <span class="tag">Tag padding: 4px 8px</span>
+        <span class="tag">Tag border radius: 4px</span>
+        <span class="tag">Tag font: Inter 12px #9E9E9E</span>
+        <span class="tag">Seller avatar: 24px circle</span>
+        <span class="tag">Seller name: Inter 12px #9E9E9E</span>
+        <span class="tag">Avatar + name gap: 6px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Pagination</div>
+    <div class="row">
+      <span class="tag">Align: center</span>
+      <span class="tag">Margin-top: 40px</span>
+      <span class="tag">Previous / Next: Inter 14px #F0F0F0, transparent bg, no border</span>
+      <span class="tag">Page numbers: 36px circle</span>
+      <span class="tag">Active page: bg #C0392B, text #F0F0F0</span>
+      <span class="tag">Inactive page: bg #2E2E2E, text #9E9E9E</span>
+      <span class="tag">Gap between items: 8px</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Page Padding</div>
+    <div class="row">
+      <span class="tag">Left + right: 64px</span>
+      <span class="tag">Top (below navbar): 32px</span>
+      <span class="tag">Bottom: 48px</span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mpp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mpp_user
+      POSTGRES_PASSWORD: mpp_pass
+      POSTGRES_DB: mpp_app
+    ports:
+      - '5432:5432'
+    volumes:
+      - mpp_postgres_data:/var/lib/postgresql/data
+
+  postgres_test:
+    image: postgres:16-alpine
+    container_name: mpp_postgres_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mpp_user
+      POSTGRES_PASSWORD: mpp_pass
+      POSTGRES_DB: mpp_app_test
+    ports:
+      - '5433:5432'
+    volumes:
+      - mpp_postgres_test_data:/var/lib/postgresql/data
+
+  mongodb:
+    image: mongo:7
+    container_name: mpp_mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mpp_mongo_data:/data/db
+
+volumes:
+  mpp_postgres_data:
+  mpp_postgres_test_data:
+  mpp_mongo_data:

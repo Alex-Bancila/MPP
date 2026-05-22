@@ -1,0 +1,60 @@
+:root {
+  --mc-bg-primary: #1a1a1a;
+  --mc-bg-secondary: #242424;
+  --mc-bg-elevated: #2e2e2e;
+  --mc-bg-input: #242424;
+
+  --mc-accent-red: #c0392b;
+  --mc-accent-red-hover: #e74c3c;
+  --mc-accent-red-muted: #7b241c;
+
+  --mc-border-default: #3a3a3a;
+  --mc-border-focus: #c0392b;
+
+  --mc-text-primary: #f0f0f0;
+  --mc-text-secondary: #9e9e9e;
+  --mc-text-disabled: #555555;
+
+  --mc-overlay: #00000080;
+
+  --mc-font-brand: 'Cinzel Decorative', serif;
+  --mc-font-body: 'Inter', sans-serif;
+
+  --mc-font-logo-size: 32px;
+  --mc-font-hero-size: 96px;
+  --mc-font-h1-size: 28px;
+  --mc-font-h2-size: 22px;
+  --mc-font-h3-size: 18px;
+  --mc-font-body-lg: 16px;
+  --mc-font-body: 14px;
+  --mc-font-body-sm: 12px;
+  --mc-font-tagline: 24px;
+  --mc-font-price-lg: 32px;
+  --mc-font-price-card: 16px;
+  --mc-font-button: 15px;
+  --mc-font-nav: 14px;
+
+  --mc-space-2: 4px;
+  --mc-space-4: 8px;
+  --mc-space-8: 16px;
+  --mc-space-12: 24px;
+  --mc-space-16: 32px;
+  --mc-space-24: 48px;
+  --mc-space-32: 64px;
+  --mc-space-48: 96px;
+
+  --mc-radius-sm: 4px;
+  --mc-radius-md: 6px;
+  --mc-radius-lg: 8px;
+  --mc-radius-full: 9999px;
+
+  --mc-shadow-card: 0px 4px 16px rgba(0, 0, 0, 0.4);
+  --mc-shadow-modal: 0px 8px 32px rgba(0, 0, 0, 0.6);
+  --mc-shadow-navbar: 0px 1px 0px #3a3a3a;
+  --mc-shadow-focus: 0px 0px 0px 2px #c0392b;
+
+  --mc-page-max-width: 1440px;
+  --mc-navbar-height: 64px;
+  --mc-navbar-padding-x: 64px;
+  --mc-page-padding-x: 64px;
+}

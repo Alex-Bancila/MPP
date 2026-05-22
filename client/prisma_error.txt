@@ -1,0 +1,2 @@
+Environment variables loaded from .env
+Prisma schema loaded from server\prisma\schema.prisma

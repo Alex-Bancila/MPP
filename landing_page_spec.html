@@ -1,0 +1,118 @@
+
+<style>
+  .spec { font-family: monospace; padding: 16px 0; }
+  .page-title { font-size: 20px; font-weight: 500; color: var(--color-text-primary); border-bottom: 2px solid #C0392B; padding-bottom: 8px; margin-bottom: 16px; }
+  .section { margin-bottom: 20px; }
+  .section-title { font-size: 13px; font-weight: 500; color: #C0392B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .card { background: var(--color-background-secondary); border-radius: 8px; padding: 12px; border: 0.5px solid var(--color-border-tertiary); }
+  .label { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .value { font-size: 13px; color: var(--color-text-primary); }
+  .swatch { display: inline-block; width: 14px; height: 14px; border-radius: 3px; margin-right: 6px; vertical-align: middle; border: 0.5px solid var(--color-border-tertiary); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; align-items: center; }
+  .tag { font-size: 11px; background: var(--color-background-tertiary); border-radius: 4px; padding: 2px 8px; color: var(--color-text-secondary); }
+</style>
+<div class="spec">
+  <div class="page-title">03 — Landing Page</div>
+
+  <div class="section">
+    <div class="section-title">Frame</div>
+    <div class="grid3">
+      <div class="card"><div class="label">Width</div><div class="value">1440px</div></div>
+      <div class="card"><div class="label">Height</div><div class="value">900px</div></div>
+      <div class="card"><div class="label">Background</div><div class="value"><span class="swatch" style="background:#1A1A1A"></span>#1A1A1A</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Navbar</div>
+    <div class="grid3">
+      <div class="card"><div class="label">Height</div><div class="value">64px</div></div>
+      <div class="card"><div class="label">Background</div><div class="value"><span class="swatch" style="background:#1A1A1A"></span>#1A1A1A</div></div>
+      <div class="card"><div class="label">Bottom border</div><div class="value">1px solid #3A3A3A</div></div>
+      <div class="card"><div class="label">Horizontal padding</div><div class="value">64px</div></div>
+      <div class="card"><div class="label">Layout</div><div class="value">Space-between (logo left, buttons right)</div></div>
+      <div class="card"><div class="label">Vertical align</div><div class="value">Center</div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="label" style="margin-bottom:6px;">Logo (left)</div>
+      <div class="row">
+        <span class="tag">Text: MUSIC-CORE</span>
+        <span class="tag">Font: Cinzel Decorative 24px 700</span>
+        <span class="tag">Color: #C0392B</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Login button (right, text only)</div>
+      <div class="row">
+        <span class="tag">Font: Inter 14px 500</span>
+        <span class="tag">Color: #F0F0F0</span>
+        <span class="tag">Hover: #C0392B</span>
+        <span class="tag">No background, no border</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Register button (right, filled)</div>
+      <div class="row">
+        <span class="tag">Background: #C0392B</span>
+        <span class="tag">Text: #F0F0F0 Inter 14px 500</span>
+        <span class="tag">Padding: 8px 20px</span>
+        <span class="tag">Border radius: 6px</span>
+        <span class="tag">Hover: #E74C3C</span>
+        <span class="tag">Gap from Login: 16px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Hero Section (centered in remaining space)</div>
+    <div class="grid2">
+      <div class="card"><div class="label">Layout</div><div class="value">Column, centered horizontally + vertically</div></div>
+      <div class="card"><div class="label">Max width</div><div class="value">900px</div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="label" style="margin-bottom:6px;">Hero title — "MUSIC-CORE"</div>
+      <div class="row">
+        <span class="tag">Font: Cinzel Decorative</span>
+        <span class="tag">Size: 96px</span>
+        <span class="tag">Weight: 700</span>
+        <span class="tag">Color: #C0392B</span>
+        <span class="tag">Align: center</span>
+        <span class="tag">Line height: 1.1</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Tagline — "A chug for your breakdown"</div>
+      <div class="row">
+        <span class="tag">Font: Inter</span>
+        <span class="tag">Size: 24px</span>
+        <span class="tag">Weight: 400</span>
+        <span class="tag">Style: italic</span>
+        <span class="tag">Color: #9E9E9E</span>
+        <span class="tag">Align: center</span>
+        <span class="tag">Margin-top: 24px</span>
+      </div>
+      <div class="label" style="margin-bottom:6px; margin-top:8px;">Description</div>
+      <div class="row">
+        <span class="tag">Text: "The underground marketplace for musicians — buy and sell instruments, gear, vinyls and more."</span>
+      </div>
+      <div class="row">
+        <span class="tag">Font: Inter 16px 400</span>
+        <span class="tag">Color: #9E9E9E</span>
+        <span class="tag">Align: center</span>
+        <span class="tag">Max-width: 600px</span>
+        <span class="tag">Margin-top: 16px</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Browse Listings Button</div>
+    <div class="grid3">
+      <div class="card"><div class="label">Width</div><div class="value">240px</div></div>
+      <div class="card"><div class="label">Height</div><div class="value">52px</div></div>
+      <div class="card"><div class="label">Border radius</div><div class="value">6px</div></div>
+      <div class="card"><div class="label">Background</div><div class="value"><span class="swatch" style="background:#C0392B"></span>#C0392B</div></div>
+      <div class="card"><div class="label">Hover</div><div class="value"><span class="swatch" style="background:#E74C3C"></span>#E74C3C</div></div>
+      <div class="card"><div class="label">Text</div><div class="value">Inter 16px 600 #F0F0F0</div></div>
+      <div class="card"><div class="label">Margin-top</div><div class="value">40px</div></div>
+      <div class="card"><div class="label">Align</div><div class="value">Center</div></div>
+      <div class="card"><div class="label">Hover shadow</div><div class="value">0 4px 16px rgba(192,57,43,0.5)</div></div>
+    </div>
+  </div>
+</div>

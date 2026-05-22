@@ -1,0 +1,128 @@
+# Music-core REST API (Assignment 2 bronze)
+# Use with VS Code REST Client, IntelliJ HTTP Client, or copy curl examples.
+# Default: API on port 3001. With Vite dev, you can use http://localhost:5173 (proxied).
+
+@baseUrl = http://localhost:3001
+
+### Health (also used before WebSocket connect in the client)
+GET {{baseUrl}}/health
+
+### Listings — paginated list with filters
+GET {{baseUrl}}/listings?page=1&pageSize=6&category=Accessories&search=guitar
+
+### Listings — by id
+GET {{baseUrl}}/listings/listing_1
+
+### Listings — create
+POST {{baseUrl}}/listings
+Content-Type: application/json
+
+{
+  "title": "REST Client Test Listing",
+  "description": "Created via rest-api.http for Assignment 2 demonstration.",
+  "price": 499,
+  "category": "Accessories",
+  "photos": ["https://picsum.photos/seed/rest-client/1200/900"],
+  "sellerId": "user_1"
+}
+
+### Listings — update (replace listingId)
+PATCH {{baseUrl}}/listings/listing_REPLACE_ME
+Content-Type: application/json
+
+{
+  "status": "Sold",
+  "price": 550
+}
+
+### Listings — delete
+DELETE {{baseUrl}}/listings/listing_REPLACE_ME
+
+### Statistics — summary
+GET {{baseUrl}}/stats/summary
+
+### Statistics — categories
+GET {{baseUrl}}/stats/categories
+
+### Statistics — top sellers
+GET {{baseUrl}}/stats/sellers?limit=5
+
+### Statistics — favourites breakdown
+GET {{baseUrl}}/stats/favourites
+
+### Statistics — reviews breakdown
+GET {{baseUrl}}/stats/reviews
+
+### Reviews — list for listing
+GET {{baseUrl}}/listings/listing_1/reviews
+
+### Reviews — create
+POST {{baseUrl}}/listings/listing_1/reviews
+Content-Type: application/json
+
+{
+  "listingId": "listing_1",
+  "userId": "user_2",
+  "rating": 5,
+  "title": "Great gear",
+  "body": "Exactly as described."
+}
+
+### Reviews — update
+PATCH {{baseUrl}}/reviews/review_REPLACE_ME
+Content-Type: application/json
+
+{
+  "rating": 4,
+  "body": "Updated review text."
+}
+
+### Reviews — delete
+DELETE {{baseUrl}}/reviews/review_REPLACE_ME
+
+### Favourites — list for user
+GET {{baseUrl}}/favourites?userId=user_1
+
+### Favourites — add
+POST {{baseUrl}}/favourites
+Content-Type: application/json
+
+{
+  "userId": "user_1",
+  "listingId": "listing_2"
+}
+
+### Favourites — remove
+DELETE {{baseUrl}}/favourites/listing_2?userId=user_1
+
+### Auth — login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "alex@musiccore.local",
+  "password": "RiffMaster123!"
+}
+
+### Auth — register
+POST {{baseUrl}}/auth/register
+Content-Type: application/json
+
+{
+  "username": "rest_demo_user",
+  "email": "rest.demo@musiccore.test",
+  "password": "password123"
+}
+
+### Generator — start
+POST {{baseUrl}}/admin/generate/start
+Content-Type: application/json
+
+{
+  "batchSize": 2,
+  "intervalMs": 2000,
+  "entityType": "listings"
+}
+
+### Generator — stop
+POST {{baseUrl}}/admin/generate/stop
