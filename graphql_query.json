@@ -1,1 +1,0 @@
-{\"query\":\"{ health { ok postgres mongo } }\"}  
