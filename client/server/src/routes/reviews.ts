@@ -7,6 +7,7 @@ import type { UsersService } from '../services/usersService'
 import type { MemoryStore } from '../storage/memoryStore'
 import { addReviewToStore, removeReviewFromStore, updateReviewInStore } from '../db/storeUpdates'
 import { parseInput, sendNotFound } from '../lib/http'
+import { requirePermission } from '../lib/auth'
 import { listingReviewParamsSchema, reviewBodySchema, reviewParamsSchema, reviewUpdateSchema } from '../schemas'
 
 export interface ReviewsRouteDeps {
@@ -37,6 +38,8 @@ export const registerReviewsRoutes = (app: FastifyInstance, deps: ReviewsRouteDe
   })
 
   app.post('/listings/:listingId/reviews', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'review:create')
+    if (!auth) return
     const params = parseInput(reply, listingReviewParamsSchema, request.params)
     if (!params) {
       return
@@ -46,6 +49,10 @@ export const registerReviewsRoutes = (app: FastifyInstance, deps: ReviewsRouteDe
     if (!body || body.listingId !== params.listingId) {
       reply.code(400).send({ error: 'Validation failed', details: { body: ['listingId mismatch'] } })
       return
+    }
+
+    if (auth.sub !== body.userId) {
+      return reply.code(403).send({ message: 'You can only post reviews as yourself.' })
     }
 
     if (!(await deps.usersService.exists(body.userId))) {
@@ -59,6 +66,10 @@ export const registerReviewsRoutes = (app: FastifyInstance, deps: ReviewsRouteDe
       return
     }
 
+    if (listing.sellerId === auth.sub) {
+      return reply.code(403).send({ message: 'You cannot review your own listing.' })
+    }
+
     const review = await deps.reviewsService.create(body)
     addReviewToStore(deps.store, review)
     deps.hub.broadcast({ reviews: [review], sync: deps.store.state.sync })
@@ -67,9 +78,21 @@ export const registerReviewsRoutes = (app: FastifyInstance, deps: ReviewsRouteDe
   })
 
   app.patch('/reviews/:reviewId', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'review:update')
+    if (!auth) return
     const params = parseInput(reply, reviewParamsSchema, request.params)
     if (!params) {
       return
+    }
+
+    const existing = await deps.reviewsService.getById(params.reviewId)
+    if (!existing) {
+      sendNotFound(reply, 'Review')
+      return
+    }
+
+    if (auth.sub !== existing.userId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only edit your own reviews.' })
     }
 
     const body = parseInput(reply, reviewUpdateSchema, request.body)
@@ -89,6 +112,8 @@ export const registerReviewsRoutes = (app: FastifyInstance, deps: ReviewsRouteDe
   })
 
   app.delete('/reviews/:reviewId', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'review:delete')
+    if (!auth) return
     const params = parseInput(reply, reviewParamsSchema, request.params)
     if (!params) {
       return
@@ -98,6 +123,10 @@ export const registerReviewsRoutes = (app: FastifyInstance, deps: ReviewsRouteDe
     if (!review) {
       sendNotFound(reply, 'Review')
       return
+    }
+
+    if (auth.sub !== review.userId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only delete your own reviews.' })
     }
 
     const removed = await deps.reviewsService.delete(params.reviewId)

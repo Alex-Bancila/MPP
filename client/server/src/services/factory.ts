@@ -10,11 +10,11 @@ import { createStatsService } from './statsService'
 import { createUsersService } from './usersService'
 
 export const createServices = (store: MemoryStore) => {
-  const authService = createAuthService(store)
   const rolesService = createRolesService(store)
   const auditService = createAuditService(store)
   const chatService = createChatService(store)
   const usersService = createUsersService(store)
+  const authService = createAuthService(store, usersService, rolesService)
   const listingsService = createListingsService(store, usersService)
   const favouritesService = createFavouritesService(store, usersService)
   const reviewsService = createReviewsService(store)

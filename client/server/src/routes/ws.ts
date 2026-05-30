@@ -4,6 +4,7 @@ import type { ChatService } from '../services/chatService'
 import type { ServerHub } from '../transport/serverHub'
 import type { MemoryStore } from '../storage/memoryStore'
 import { addConversationToStore, addMessageToStore } from '../db/storeUpdates'
+import { requireAuthPayload } from '../lib/auth'
 
 export interface WebsocketRouteDeps {
   hub: ServerHub
@@ -18,7 +19,23 @@ export const registerWebsocketRoutes = (app: FastifyInstance, deps: WebsocketRou
     handler: (_request, reply) => {
       reply.code(426).send({ error: 'WebSocket upgrade required' })
     },
-    wsHandler: (socket) => {
+    wsHandler: async (socket, request) => {
+      const queryToken = (request.query as any)?.token as string | undefined
+      if (queryToken) {
+        request.headers.authorization = `Bearer ${queryToken}`
+      }
+
+      let auth
+      try {
+        auth = await requireAuthPayload(request)
+      } catch {
+        auth = null
+      }
+      if (!auth) {
+        try { socket.close() } catch {}
+        return
+      }
+
       const unsubscribe = deps.hub.addListener((payload) => {
         try {
           // Only send when socket is open; guard against throws from send().
@@ -52,6 +69,10 @@ export const registerWebsocketRoutes = (app: FastifyInstance, deps: WebsocketRou
           }
 
           if (payload.type !== 'chat/send' || !payload.conversationId || !payload.senderId || !payload.recipientId || !payload.listingId || !payload.body) {
+            return
+          }
+
+          if (payload.senderId !== auth.sub) {
             return
           }
 

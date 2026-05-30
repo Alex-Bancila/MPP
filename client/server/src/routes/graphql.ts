@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import {
   GraphQLBoolean,
   GraphQLFloat,
@@ -59,6 +59,11 @@ import {
 import { createGeneratorController, type GeneratorStartInput } from './generator'
 import { prisma } from '../db/prisma'
 import { getMongoClient } from '../db/mongo'
+import { requirePermissionGraphQL, requireAuthPayload } from '../lib/auth'
+
+type GraphQLRootValue = { request?: FastifyRequest }
+const getReqFromInfo = (info: { rootValue?: unknown }): FastifyRequest | undefined =>
+  (info.rootValue as GraphQLRootValue | undefined)?.request
 
 export interface GraphQLRouteDeps {
   store: MemoryStore
@@ -549,7 +554,11 @@ const QueryType = new GraphQLObjectType({
     },
     roles: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(RoleType))),
-      resolve: async (_root, _args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, _args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        await requirePermissionGraphQL(getReqFromInfo(info)!, 'admin:read')
         return context.rolesService.listRoles().then((rows) =>
           rows.map((row) => ({
             ...row,
@@ -569,7 +578,11 @@ const QueryType = new GraphQLObjectType({
       args: {
         limit: { type: GraphQLInt },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        await requirePermissionGraphQL(getReqFromInfo(info)!, 'audit:read')
         const parsed = parseWithSchema(adminDashboardQuerySchema, { limit: args.limit })
         return context.auditService.dashboard(parsed.limit)
       },
@@ -579,8 +592,14 @@ const QueryType = new GraphQLObjectType({
       args: {
         userId: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
-        return context.chatService.listConversationsForUser(String(args.userId))
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) throw new Error('Unauthorized')
+        const payload = await requireAuthPayload(getReqFromInfo(info)!)
+        const targetUserId = String(args.userId)
+        if (payload.sub !== targetUserId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
+        return context.chatService.listConversationsForUser(targetUserId)
       },
     },
     messagesForConversation: {
@@ -588,8 +607,17 @@ const QueryType = new GraphQLObjectType({
       args: {
         conversationId: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) throw new Error('Unauthorized')
+        const payload = await requireAuthPayload(getReqFromInfo(info)!)
         const parsed = parseWithSchema(chatMessagesQuerySchema, { conversationId: args.conversationId })
+        const conversation = context.store.state.conversations.find((c) => c.id === parsed.conversationId)
+        if (conversation) {
+          const isParticipant = conversation.participantIds.includes(payload.sub)
+          if (!isParticipant && payload.role !== 'admin') {
+            throw new Error('Forbidden')
+          }
+        }
         return context.chatService.listMessages(parsed.conversationId)
       },
     },
@@ -680,11 +708,18 @@ const MutationType = new GraphQLObjectType({
         userId: { type: new GraphQLNonNull(GraphQLID) },
         listingId: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'favourite:toggle')
         const parsed = parseWithSchema(favouriteBodySchema, {
           userId: args.userId,
           listingId: args.listingId,
         })
+        if (payload.sub !== parsed.userId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         if (!(await context.usersService.exists(parsed.userId))) {
           throw new Error('User not found')
         }
@@ -706,10 +741,17 @@ const MutationType = new GraphQLObjectType({
         userId: { type: new GraphQLNonNull(GraphQLID) },
         listingId: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'favourite:toggle')
         const parsed = parseWithSchema(favouriteQuerySchema, {
           userId: args.userId,
         })
+        if (payload.sub !== parsed.userId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         if (!(await context.usersService.exists(parsed.userId))) {
           throw new Error('User not found')
         }
@@ -735,7 +777,11 @@ const MutationType = new GraphQLObjectType({
         title: { type: new GraphQLNonNull(GraphQLString) },
         body: { type: new GraphQLNonNull(GraphQLString) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'review:create')
         const parsed = parseWithSchema(reviewBodySchema, {
           listingId: args.listingId,
           userId: args.userId,
@@ -743,11 +789,18 @@ const MutationType = new GraphQLObjectType({
           title: args.title,
           body: args.body,
         })
+        if (payload.sub !== parsed.userId) {
+          throw new Error('Forbidden')
+        }
         if (!(await context.usersService.exists(parsed.userId))) {
           throw new Error('User not found')
         }
-        if (!(await context.listingsService.getById(parsed.listingId))) {
+        const listing = await context.listingsService.getById(parsed.listingId)
+        if (!listing) {
           throw new Error('Listing not found')
+        }
+        if (listing.sellerId === payload.sub) {
+          throw new Error('You cannot review your own listing.')
         }
         const review = await context.reviewsService.create(parsed)
         addReviewToStore(context.store, review)
@@ -764,7 +817,15 @@ const MutationType = new GraphQLObjectType({
         title: { type: GraphQLString },
         body: { type: GraphQLString },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'review:update')
+        const existingReview = context.store.state.reviews.find((r) => r.id === String(args.reviewId))
+        if (existingReview && payload.sub !== existingReview.userId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         const updates: Record<string, unknown> = {}
         if (args.rating !== null && args.rating !== undefined) {
           updates.rating = args.rating
@@ -790,8 +851,15 @@ const MutationType = new GraphQLObjectType({
       args: {
         reviewId: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'review:delete')
         const review = context.store.state.reviews.find((r) => r.id === String(args.reviewId))
+        if (review && payload.sub !== review.userId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         const removed = await context.reviewsService.delete(String(args.reviewId))
         if (removed) {
           removeReviewFromStore(context.store, String(args.reviewId))
@@ -816,7 +884,11 @@ const MutationType = new GraphQLObjectType({
         sellerId: { type: new GraphQLNonNull(GraphQLID) },
         status: { type: GraphQLString },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'listing:create')
         const parsed = parseWithSchema(createListingSchema, {
           id: args.id,
           datePosted: args.datePosted,
@@ -828,6 +900,9 @@ const MutationType = new GraphQLObjectType({
           sellerId: args.sellerId,
           status: args.status === 'Sold' ? 'Sold' : 'Active',
         })
+        if (payload.sub !== parsed.sellerId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         const listing = await context.listingsService.create(parsed)
         const seller = await context.usersService.getById(parsed.sellerId)
         addListingToStore(context.store, listing)
@@ -851,7 +926,15 @@ const MutationType = new GraphQLObjectType({
         photos: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
         status: { type: GraphQLString },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'listing:update')
+        const existingListing = context.store.state.listings.find((l) => l.id === String(args.listingId))
+        if (existingListing && payload.sub !== existingListing.sellerId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         const updates: Record<string, unknown> = {}
         if (args.title !== null && args.title !== undefined) {
           updates.title = args.title
@@ -886,8 +969,15 @@ const MutationType = new GraphQLObjectType({
       args: {
         listingId: { type: new GraphQLNonNull(GraphQLID) },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        const payload = await requirePermissionGraphQL(getReqFromInfo(info)!, 'listing:delete')
         const existing = context.store.state.listings.find((l) => l.id === String(args.listingId))
+        if (existing && payload.sub !== existing.sellerId && payload.role !== 'admin') {
+          throw new Error('Forbidden')
+        }
         const removed = await context.listingsService.delete(String(args.listingId))
         if (removed) {
           removeListingFromStore(context.store, String(args.listingId))
@@ -910,7 +1000,11 @@ const MutationType = new GraphQLObjectType({
         body: { type: new GraphQLNonNull(GraphQLString) },
         createdAt: { type: GraphQLString },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        await requirePermissionGraphQL(getReqFromInfo(info)!, 'chat:send')
         const parsed = parseWithSchema(chatSendSchema, {
           conversationId: args.conversationId,
           messageId: args.messageId,
@@ -957,7 +1051,11 @@ const MutationType = new GraphQLObjectType({
         intervalMs: { type: GraphQLInt },
         entityType: { type: GraphQLString },
       },
-      resolve: async (_root, args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        await requirePermissionGraphQL(getReqFromInfo(info)!, 'admin:read')
         const controller = createGeneratorController({
           store: context.store,
           hub: context.hub,
@@ -973,7 +1071,11 @@ const MutationType = new GraphQLObjectType({
     },
     stopGenerator: {
       type: GeneratorStatusType,
-      resolve: async (_root, _args, context: GraphQLRouteDeps) => {
+      resolve: async (_root, _args, context: GraphQLRouteDeps, info) => {
+        if (!getReqFromInfo(info)) {
+          throw new Error('Unauthorized')
+        }
+        await requirePermissionGraphQL(getReqFromInfo(info)!, 'admin:read')
         const controller = createGeneratorController({
           store: context.store,
           hub: context.hub,
@@ -1010,6 +1112,7 @@ export const registerGraphQLRoutes = (app: FastifyInstance, deps: GraphQLRouteDe
       variableValues: variables,
       operationName,
       contextValue: deps,
+      rootValue: { request, reply },
     })
 
     if (result.errors?.length) {

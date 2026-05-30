@@ -4,6 +4,7 @@ export interface MemoryStore {
   state: AppState
   logs: ActionLog[]
   suspiciousUsers: SuspiciousUser[]
+  authLog: Array<{ email: string; at: string }>
 }
 
 export const createMemoryStore = (): MemoryStore => {
@@ -11,5 +12,6 @@ export const createMemoryStore = (): MemoryStore => {
     state: structuredClone(initialAppState),
     logs: [],
     suspiciousUsers: [],
+    authLog: [],
   }
 }

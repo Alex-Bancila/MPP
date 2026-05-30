@@ -31,6 +31,19 @@ vi.mock('@/features/sync/serverClient', async (importOriginal) => {
         permissions: ['listing:create', 'listing:update', 'listing:delete', 'review:create', 'review:update', 'review:delete', 'favourite:toggle', 'chat:send'],
       }
     }),
+    restoreServerSession: vi.fn(async () => null),
+    refreshServerSession: vi.fn(async () => false),
+    requestMagicLink: vi.fn(async () => true),
+    verifyMagicLink: vi.fn(async () => ({
+      id: 'user_magic',
+      username: 'magic',
+      email: 'magic@musiccore.local',
+      passwordHash: '',
+      avatarUrl: 'https://i.pravatar.cc/96?u=magic',
+      createdAt: new Date().toISOString(),
+      role: 'user' as const,
+      permissions: [],
+    })),
   }
 })
 

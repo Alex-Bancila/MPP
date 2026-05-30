@@ -10,7 +10,7 @@ export const Navbar = () => {
   const favourites = useAppSelector((state) => state.favourites)
   const messages = useAppSelector((state) => state.messages)
   const currentUser = useAppSelector((state) => getCurrentUser(state))
-  const { logout } = useAuth()
+  const { logout, hasPermission, isAdmin } = useAuth()
   const favouriteCount = currentUser
     ? favourites.filter((row) => row.userId === currentUser.id).length
     : 0
@@ -43,7 +43,7 @@ export const Navbar = () => {
           <span className="mc-navbar__favourites-short">Favs</span>
           {favouriteCount > 0 ? <span className="mc-navbar__badge">{favouriteCount}</span> : null}
         </button>
-        {currentUser && (
+        {hasPermission('chat:send') && (
           <button
             className="mc-button mc-button--ghost mc-navbar__chat"
             onClick={() => navigate('/messages')}
@@ -54,7 +54,7 @@ export const Navbar = () => {
             {unreadMessageCount > 0 ? <span className="mc-navbar__badge">{unreadMessageCount}</span> : null}
           </button>
         )}
-        {currentUser?.role === 'admin' && (
+        {isAdmin && (
           <button
             className="mc-button mc-button--ghost"
             onClick={() => navigate('/admin')}
@@ -63,18 +63,14 @@ export const Navbar = () => {
             Admin
           </button>
         )}
-        <button
-          className="mc-button mc-button--primary mc-navbar__sell"
-          onClick={() => {
-            if (!currentUser) {
-              navigate('/login', { state: { returnTo: '/listings/new' } })
-              return
-            }
-            navigate('/listings/new')
-          }}
-        >
-          Sell
-        </button>
+        {hasPermission('listing:create') && (
+          <button
+            className="mc-button mc-button--primary mc-navbar__sell"
+            onClick={() => navigate('/listings/new')}
+          >
+            Sell
+          </button>
+        )}
         {currentUser ? (
           <button
             className="mc-button mc-button--ghost mc-navbar__logout"

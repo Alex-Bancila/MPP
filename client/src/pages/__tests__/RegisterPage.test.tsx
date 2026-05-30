@@ -6,10 +6,14 @@ import { describe, expect, it, vi } from 'vitest'
 import { AppProviders } from '@/app/providers'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { AuthLayout } from '@/shared/components/layout/AuthLayout'
+
 vi.mock('@/features/sync/serverClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/sync/serverClient')>()
   return {
     ...actual,
+    // FIX: tell useAuth the server is reachable so it calls registerServerUser
+    // instead of falling back to registerLocal (which can't navigate to /listings)
+    getServerReachable: vi.fn(async () => true),
     registerServerUser: vi.fn(async (input) => {
       return {
         id: 'user_mock',
@@ -19,9 +23,32 @@ vi.mock('@/features/sync/serverClient', async (importOriginal) => {
         avatarUrl: `https://i.pravatar.cc/96?u=${input.email}`,
         createdAt: new Date().toISOString(),
         role: 'user' as const,
-        permissions: ['listing:create', 'listing:update', 'listing:delete', 'review:create', 'review:update', 'review:delete', 'favourite:toggle', 'chat:send'],
+        permissions: [
+          'listing:create',
+          'listing:update',
+          'listing:delete',
+          'review:create',
+          'review:update',
+          'review:delete',
+          'favourite:toggle',
+          'chat:send',
+        ],
       }
     }),
+    // FIX: prevent the session-restore useEffect from firing during tests
+    restoreServerSession: vi.fn(async () => null),
+    refreshServerSession: vi.fn(async () => false),
+    requestMagicLink: vi.fn(async () => true),
+    verifyMagicLink: vi.fn(async () => ({
+      id: 'user_magic',
+      username: 'magic',
+      email: 'magic@musiccore.local',
+      passwordHash: '',
+      avatarUrl: 'https://i.pravatar.cc/96?u=magic',
+      createdAt: new Date().toISOString(),
+      role: 'user' as const,
+      permissions: [],
+    })),
   }
 })
 

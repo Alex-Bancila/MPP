@@ -3,11 +3,12 @@ import websocket from '@fastify/websocket'
 import helmet from '@fastify/helmet'
 import jwt from '@fastify/jwt'
 import cookie from '@fastify/cookie'
-import Fastify from 'fastify'
+import Fastify, { type FastifyInstance } from 'fastify'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 
 import { createMemoryStore, type MemoryStore } from './storage/memoryStore'
+import { createTokenStore, type TokenStore } from './storage/tokenStore'
 import { createServices } from './services/factory'
 import { registerGraphQLRoutes } from './routes/graphql'
 import { registerAuthRoutes } from './routes/auth'
@@ -26,23 +27,24 @@ import { syncStoreFromDb } from './db/snapshot'
 export const JWT_SECRET = process.env.JWT_SECRET ?? 'music-core-dev-secret-change-in-production'
 export const JWT_EXPIRY = '2h'
 export const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
+export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+export const RESET_TOKEN_TTL_MS = 15 * 60 * 1000 // 15 minutes
+export const MAGIC_TOKEN_TTL_MS = 10 * 60 * 1000 // 10 minutes
 
 export interface BuildAppResult {
   app: ReturnType<typeof Fastify>
   store: MemoryStore
   hub: ServerHub
+  tokens: TokenStore
 }
 
 export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppResult> => {
   const useHttps = options?.https ?? process.env.USE_HTTPS === 'true'
 
-  const serverOptions: Parameters<typeof Fastify>[0] = {
-    logger: false,
-  }
-
+  let httpsOptions: { key: Buffer; cert: Buffer } | undefined
   if (useHttps) {
     try {
-      serverOptions.https = {
+      httpsOptions = {
         key: readFileSync(join(process.cwd(), 'server/certs/key.pem')),
         cert: readFileSync(join(process.cwd(), 'server/certs/cert.pem')),
       }
@@ -51,7 +53,8 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
     }
   }
 
-  const app = Fastify(serverOptions)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const app = Fastify({ logger: false, ...(httpsOptions ? { https: httpsOptions } : {}) } as any) as unknown as FastifyInstance
 
   await app.register(helmet, { contentSecurityPolicy: false })
 
@@ -66,6 +69,10 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
   await app.register(jwt, {
     secret: JWT_SECRET,
     sign: { expiresIn: JWT_EXPIRY },
+    cookie: {
+      cookieName: 'mc_access',
+      signed: false,
+    },
   })
 
   await app.register(websocket, {
@@ -74,6 +81,7 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
 
   const store = createMemoryStore()
   const hub = createServerHub()
+  const tokens = createTokenStore()
   await syncStoreFromDb(prisma, store)
   console.log(`[Server] Loaded from DB: ${store.state.users.length} users, ${store.state.listings.length} listings, ${store.state.reviews.length} reviews`)
 
@@ -112,7 +120,7 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
     reviewsService,
     statsService,
   })
-  registerAuthRoutes(app, { authService, hub, store })
+  registerAuthRoutes(app, { authService, auditService, hub, store, tokens })
   registerWebsocketRoutes(app, { hub, store, chatService })
   registerHealthRoutes(app)
   registerListingsRoutes(app, routeDeps)
@@ -131,5 +139,5 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
     reply.code(500).send({ error: 'Internal server error' })
   })
 
-  return { app, store, hub }
+  return { app, store, hub, tokens }
 }

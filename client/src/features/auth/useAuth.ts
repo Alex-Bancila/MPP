@@ -3,10 +3,17 @@ import { useAppStore } from '@/app/store/useAppStore'
 import { getCurrentUser } from '@/app/store/selectors'
 import type { LoginFormValues, RegisterFormValues } from '@/features/auth/authSchema'
 import {
+  getAuthToken,
   getServerReachable,
   loginServerUser,
   registerServerUser,
+  restoreServerSession,
   setAuthToken,
+  setRefreshToken,
+  refreshServerSession,
+  logoutServerSession,
+  requestMagicLink,
+  verifyMagicLink,
 } from '@/features/sync/serverClient'
 import { initialAppState } from '@/shared/data/seed'
 import { hashPassword, verifyPassword } from '@/shared/utils/hash'
@@ -19,9 +26,33 @@ export const useAuth = () => {
   const inactivityTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const logout = () => {
+    void logoutServerSession()
     setAuthToken(null)
+    setRefreshToken(null)
     dispatch({ type: 'auth/logout' })
   }
+
+  // FIX: Restore session on page reload.
+  // On mount, if there is a token in localStorage but no user in the store yet,
+  // call /auth/me to get the user back (with the correct role/permissions from the DB).
+  useEffect(() => {
+    if (currentUser) return        // already logged in (e.g. during HMR)
+    if (!getAuthToken()) return    // no token stored, nothing to restore
+
+    void (async () => {
+      const user = await restoreServerSession()
+      if (user) {
+        dispatch({ type: 'auth/login', payload: { userId: user.id, user } })
+        return
+      }
+      const ok = await refreshServerSession()
+      if (!ok) return
+      const restored = await restoreServerSession()
+      if (restored) {
+        dispatch({ type: 'auth/login', payload: { userId: restored.id, user: restored } })
+      }
+    })()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- intentionally runs once on mount
 
   // Inactivity logout
   useEffect(() => {
@@ -121,5 +152,26 @@ export const useAuth = () => {
     }
   }
 
-  return { currentUser, register, login, logout }
+  const loginWithMagic = async (token: string): Promise<{ ok: boolean; message?: string }> => {
+    try {
+      const user = await verifyMagicLink({ token })
+      dispatch({ type: 'auth/login', payload: { userId: user.id, user } })
+      return { ok: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Magic link failed.'
+      return { ok: false, message }
+    }
+  }
+
+  const requestMagic = async (email: string): Promise<{ ok: boolean; message?: string }> => {
+    const ok = await requestMagicLink({ email })
+    return ok ? { ok: true } : { ok: false, message: 'Unable to request magic link.' }
+  }
+
+  const hasPermission = (perm: string): boolean =>
+    currentUser?.permissions?.includes(perm) ?? false
+
+  const isAdmin = currentUser?.role === 'admin'
+
+  return { currentUser, register, login, logout, loginWithMagic, requestMagic, hasPermission, isAdmin }
 }

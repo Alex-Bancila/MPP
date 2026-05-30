@@ -14,6 +14,9 @@ vi.mock('@/features/sync/serverClient', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/sync/serverClient')>()
   return {
     ...actual,
+    // FIX: tell useAuth the server is reachable so it calls loginServerUser
+    // instead of falling back to loginLocal (which can't navigate to /listings)
+    getServerReachable: vi.fn(async () => true),
     loginServerUser: vi.fn(async (input) => {
       const user = initialAppState.users.find((u) => u.email === input.email)
       if (!user || !verifyPassword(input.password, user.passwordHash)) {
@@ -21,6 +24,20 @@ vi.mock('@/features/sync/serverClient', async (importOriginal) => {
       }
       return user
     }),
+    // FIX: prevent the session-restore useEffect from firing during tests
+    restoreServerSession: vi.fn(async () => null),
+    refreshServerSession: vi.fn(async () => false),
+    requestMagicLink: vi.fn(async () => true),
+    verifyMagicLink: vi.fn(async () => ({
+      id: 'user_magic',
+      username: 'magic',
+      email: 'magic@musiccore.local',
+      passwordHash: '',
+      avatarUrl: 'https://i.pravatar.cc/96?u=magic',
+      createdAt: new Date().toISOString(),
+      role: 'user' as const,
+      permissions: [],
+    })),
   }
 })
 
@@ -60,6 +77,7 @@ const renderAuthRoutes = (initialPath = '/login') => {
 describe('LoginPage', () => {
   beforeEach(() => {
     window.localStorage.removeItem('music-core.currentUserId')
+    window.localStorage.removeItem('music-core.token')
   })
 
   it('renders expected fields and controls', () => {
@@ -69,6 +87,7 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: 'Magic Link' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Forgot password?' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Register' })).toBeInTheDocument()
   })

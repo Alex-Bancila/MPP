@@ -16,6 +16,7 @@ import { useListings } from '@/features/listings/useListings'
 import { ReviewForm } from '@/features/reviews/components/ReviewForm'
 import { GearDnaCard } from '@/features/stats/components/GearDnaCard'
 import { computeGearDna } from '@/features/stats/gearDna'
+import { useAuth } from '@/features/auth/useAuth'
 import { useMessaging } from '@/features/messaging/useMessaging'
 import { Button } from '@/shared/components/ui/Button'
 import { toRon } from '@/shared/utils/currency'
@@ -27,6 +28,7 @@ export const ListingDetailPage = () => {
   const { state, dispatch } = useAppStore()
   const { deleteListing, isFavourite, toggleFavourite, createReview, updateReview, deleteReview } = useListings()
   const { sendMessage } = useMessaging()
+  const { hasPermission, isAdmin } = useAuth()
 
   const [showDelete, setShowDelete] = useState(false)
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null)
@@ -147,29 +149,34 @@ export const ListingDetailPage = () => {
           <div className="mc-detail__actions">
             {!ownedByCurrentUser && listing.status === 'Active' ? (
               <>
-                <Button variant="primary" onClick={sendQuickMessage}>
-                  Contact Seller
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleToggleFavourite}
-                >
-                  {favourite ? 'Remove Favourite' : 'Add to Favourites'}
-                </Button>
+                {hasPermission('chat:send') && (
+                  <Button variant="primary" onClick={sendQuickMessage}>
+                    Contact Seller
+                  </Button>
+                )}
+                {hasPermission('favourite:toggle') && (
+                  <Button variant="ghost" onClick={handleToggleFavourite}>
+                    {favourite ? 'Remove Favourite' : 'Add to Favourites'}
+                  </Button>
+                )}
                 {currentUser && (
                   <Button variant="ghost" onClick={() => navigate('/favourites')}>
                     View Favourites
                   </Button>
                 )}
               </>
-            ) : ownedByCurrentUser ? (
+            ) : (ownedByCurrentUser || isAdmin) ? (
               <>
-                <Button variant="primary" onClick={() => navigate(`/listings/${listing.id}/edit`)}>
-                  Edit Listing
-                </Button>
-                <Button variant="secondary" onClick={() => setShowDelete(true)}>
-                  Delete Listing
-                </Button>
+                {hasPermission('listing:update') && (
+                  <Button variant="primary" onClick={() => navigate(`/listings/${listing.id}/edit`)}>
+                    Edit Listing
+                  </Button>
+                )}
+                {hasPermission('listing:delete') && (
+                  <Button variant="secondary" onClick={() => setShowDelete(true)}>
+                    Delete Listing
+                  </Button>
+                )}
               </>
             ) : (
               <div className="mc-tag">Sold</div>
@@ -203,22 +210,26 @@ export const ListingDetailPage = () => {
                   <p>{review.body}</p>
                   {currentUser && review.userId === currentUser.id ? (
                     <div className="mc-form__actions" style={{ marginTop: '16px' }}>
-                      <Button
-                        variant="ghost"
-                        type="button"
-                        onClick={() => setEditingReviewId(review.id)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        type="button"
-                        onClick={() => {
-                          if (requireAuth()) deleteReview(review.id)
-                        }}
-                      >
-                        Delete
-                      </Button>
+                      {hasPermission('review:update') && (
+                        <Button
+                          variant="ghost"
+                          type="button"
+                          onClick={() => setEditingReviewId(review.id)}
+                        >
+                          Edit
+                        </Button>
+                      )}
+                      {hasPermission('review:delete') && (
+                        <Button
+                          variant="secondary"
+                          type="button"
+                          onClick={() => {
+                            if (requireAuth()) deleteReview(review.id)
+                          }}
+                        >
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   ) : null}
                 </article>
@@ -229,7 +240,7 @@ export const ListingDetailPage = () => {
           )}
         </div>
 
-        {currentUser ? (
+        {currentUser && (hasPermission('review:create') || editingReviewId) && !ownedByCurrentUser ? (
           <article className="mc-card" style={{ padding: '24px', marginTop: '24px' }}>
             <h3 className="mc-page__title" style={{ fontSize: '20px' }}>
               {editingReviewId ? 'Edit your review' : 'Add a review'}

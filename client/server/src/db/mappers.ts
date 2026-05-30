@@ -22,6 +22,8 @@ const toStringArray = (value: Prisma.JsonValue): string[] => {
   return []
 }
 
+const isAdminRoleId = (roleId: string) => roleId === 'role_admin' || roleId === 'admin'
+
 export const mapUser = (user: PrismaUser): User => ({
   id: user.id,
   username: user.username,
@@ -29,9 +31,9 @@ export const mapUser = (user: PrismaUser): User => ({
   passwordHash: user.passwordHash,
   avatarUrl: user.avatarUrl,
   createdAt: toIso(user.createdAt),
-  role: user.roleId === 'admin' ? 'admin' : 'user',
+  role: isAdminRoleId(user.roleId) ? 'admin' : 'user',
   permissions:
-    user.roleId === 'admin'
+    isAdminRoleId(user.roleId)
       ? [
           'listing:create',
           'listing:update',

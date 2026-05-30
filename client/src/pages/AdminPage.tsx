@@ -1,11 +1,14 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/app/store/useAppStore'
+import { useAppSelector } from '@/app/store/useAppSelector'
 import { getCurrentUser } from '@/app/store/selectors'
 import { getAdminDashboard, getAdminRoles, type AdminActionLog, type AdminSuspiciousUser, type AdminRole } from '@/features/sync/serverClient'
 import { Button } from '@/shared/components/ui/Button'
 
 type Tab = 'logs' | 'suspicious' | 'roles'
+
+const POLL_INTERVAL_MS = 10_000 // refresh logs every 10 seconds
 
 const formatDate = (iso: string) => {
   const d = new Date(iso)
@@ -58,9 +61,16 @@ export const AdminPage = () => {
   const [roles, setRoles] = useState<AdminRole[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  const lastSyncedAt = useAppSelector((state) => state.sync.lastSyncedAt)
+
+  // Stable ref so the interval always calls the latest fetchData
+  // without needing fetchData in the interval's dependency array
+  const fetchDataRef = useRef<((silent: boolean) => Promise<void>) | null>(null)
+
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     setError(null)
     try {
       const [dashboard, rolesData] = await Promise.all([
@@ -70,13 +80,20 @@ export const AdminPage = () => {
       setLogs(dashboard.logs)
       setSuspiciousUsers(dashboard.suspiciousUsers)
       setRoles(rolesData)
+      setLastUpdated(new Date())
     } catch {
       setError('Failed to load admin data.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
+  // Keep ref in sync with latest fetchData
+  useEffect(() => {
+    fetchDataRef.current = fetchData
+  }, [fetchData])
+
+  // Initial load + access guard
   useEffect(() => {
     if (!currentUser) {
       navigate('/login')
@@ -86,8 +103,25 @@ export const AdminPage = () => {
       navigate('/listings')
       return
     }
-    void fetchData()
+    void fetchData(false)
   }, [currentUser, navigate, fetchData])
+
+  // Auto-poll — uses ref so interval is created once and never reset
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'admin') return
+
+    const interval = setInterval(() => {
+      void fetchDataRef.current?.(true)
+    }, POLL_INTERVAL_MS)
+
+    return () => clearInterval(interval)
+  }, [currentUser]) // intentionally no fetchData dep — ref handles it
+
+  // Refresh immediately whenever the WebSocket pushes new data to the store
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== 'admin' || !lastSyncedAt) return
+    void fetchDataRef.current?.(true)
+  }, [lastSyncedAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!currentUser || currentUser.role !== 'admin') {
     return null
@@ -101,9 +135,14 @@ export const AdminPage = () => {
           <p className="mc-page__subtitle">
             Monitor user actions, suspicious behaviour, and role definitions.
           </p>
+          {lastUpdated && (
+            <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '4px' }}>
+              Last updated: {lastUpdated.toLocaleTimeString()} · auto-refreshes every {POLL_INTERVAL_MS / 1000}s
+            </p>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Button variant="ghost" onClick={() => void fetchData()}>
+          <Button variant="ghost" onClick={() => void fetchData(false)}>
             Refresh
           </Button>
           <Button variant="ghost" onClick={() => navigate('/listings')}>

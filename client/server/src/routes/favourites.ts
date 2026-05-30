@@ -5,6 +5,7 @@ import type { ListingsService } from '../services/listingsService'
 import type { UsersService } from '../services/usersService'
 import { addFavouriteToStore, removeFavouriteFromStore } from '../db/storeUpdates'
 import { parseInput, sendNotFound } from '../lib/http'
+import { requireAuth, requirePermission } from '../lib/auth'
 import {
   favouriteBodySchema,
   favouriteParamsSchema,
@@ -24,28 +25,40 @@ export const registerFavouritesRoutes = (
   deps: FavouritesRouteDeps,
 ): void => {
   app.get('/favourites', async (request, reply) => {
+    const auth = await requireAuth(request, reply)
+    if (!auth) return
+
     const parsed = parseInput(reply, favouriteQuerySchema, request.query)
     if (!parsed) {
       return
     }
 
-    if (!(await deps.usersService.exists(parsed.userId))) {
+    // Regular users can only view their own favourites; admins can view any user's
+    const targetUserId = auth.role === 'admin' ? parsed.userId : auth.sub
+
+    if (!(await deps.usersService.exists(targetUserId))) {
       sendNotFound(reply, 'User')
       return
     }
 
-    const items = await deps.favouritesService.listForUser(parsed.userId)
+    const items = await deps.favouritesService.listForUser(targetUserId)
     return reply.send({
-      userId: parsed.userId,
+      userId: targetUserId,
       totalItems: items.length,
       items,
     })
   })
 
   app.post('/favourites', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'favourite:toggle')
+    if (!auth) return
     const parsed = parseInput(reply, favouriteBodySchema, request.body)
     if (!parsed) {
       return
+    }
+
+    if (auth.sub !== parsed.userId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only manage your own favourites.' })
     }
 
     if (!(await deps.usersService.exists(parsed.userId))) {
@@ -78,6 +91,8 @@ export const registerFavouritesRoutes = (
   })
 
   app.delete('/favourites/:listingId', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'favourite:toggle')
+    if (!auth) return
     const params = parseInput(reply, favouriteParamsSchema, request.params)
     if (!params) {
       return
@@ -86,6 +101,10 @@ export const registerFavouritesRoutes = (
     const query = parseInput(reply, favouriteQuerySchema, request.query)
     if (!query) {
       return
+    }
+
+    if (auth.sub !== query.userId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only manage your own favourites.' })
     }
 
     if (!(await deps.usersService.exists(query.userId))) {

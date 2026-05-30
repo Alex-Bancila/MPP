@@ -30,12 +30,16 @@ const LockIcon = () => {
 
 export const LoginPage = () => {
   const navigate = useNavigate()
-  const { currentUser, login } = useAuth()
+  const { currentUser, login, loginWithMagic, requestMagic } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<'email' | 'password', string>>>({})
   const [formError, setFormError] = useState('')
+  const [activeTab, setActiveTab] = useState<'password' | 'magic'>('password')
+  const [magicEmail, setMagicEmail] = useState('')
+  const [magicToken, setMagicToken] = useState('')
+  const [magicMessage, setMagicMessage] = useState('')
 
   useEffect(() => {
     if (currentUser) {
@@ -76,6 +80,36 @@ export const LoginPage = () => {
     navigate('/listings')
   }
 
+  const handleMagicRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setMagicMessage('')
+    if (!magicEmail.trim()) {
+      setMagicMessage('Enter your email to request a magic link.')
+      return
+    }
+    const result = await requestMagic(magicEmail.trim())
+    if (!result.ok) {
+      setMagicMessage(result.message ?? 'Unable to request magic link.')
+      return
+    }
+    setMagicMessage('Magic link sent. Check the server console for the token.')
+  }
+
+  const handleMagicVerify = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setMagicMessage('')
+    if (!magicToken.trim()) {
+      setMagicMessage('Paste the magic token from the console.')
+      return
+    }
+    const result = await loginWithMagic(magicToken.trim())
+    if (!result.ok) {
+      setMagicMessage(result.message ?? 'Magic login failed.')
+      return
+    }
+    navigate('/listings')
+  }
+
   return (
     <section className="mc-auth-page" aria-labelledby="login-title">
       <p className="mc-auth-page__brand">MUSIC CORE</p>
@@ -85,52 +119,125 @@ export const LoginPage = () => {
           Login
         </h1>
 
-        <form
-          className="mc-auth-panel__form"
-          onSubmit={handleSubmit}
-          noValidate
-        >
-          <Input
-            label="Email"
-            type="email"
-            placeholder="Enter your email"
-            autoComplete="email"
-            icon={<MailIcon />}
-            name="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            error={fieldErrors.email}
-          />
-          <Input
-            label="Password"
-            type="password"
-            placeholder="Enter your password"
-            autoComplete="current-password"
-            icon={<LockIcon />}
-            name="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            error={fieldErrors.password}
-          />
+        <div className="mc-tabs" role="tablist" aria-label="Login methods">
+          <button
+            type="button"
+            className={`mc-tab ${activeTab === 'password' ? 'mc-tab--active' : ''}`}
+            onClick={() => setActiveTab('password')}
+            role="tab"
+            aria-selected={activeTab === 'password'}
+          >
+            Password
+          </button>
+          <button
+            type="button"
+            className={`mc-tab ${activeTab === 'magic' ? 'mc-tab--active' : ''}`}
+            onClick={() => setActiveTab('magic')}
+            role="tab"
+            aria-selected={activeTab === 'magic'}
+          >
+            Magic Link
+          </button>
+        </div>
 
-          {formError ? <p className="mc-auth-panel__error">{formError}</p> : null}
+        {activeTab === 'password' ? (
+          <form
+            className="mc-auth-panel__form"
+            onSubmit={handleSubmit}
+            noValidate
+          >
+            <Input
+              label="Email"
+              type="email"
+              placeholder="Enter your email"
+              autoComplete="email"
+              icon={<MailIcon />}
+              name="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              error={fieldErrors.email}
+            />
+            <Input
+              label="Password"
+              type="password"
+              placeholder="Enter your password"
+              autoComplete="current-password"
+              icon={<LockIcon />}
+              name="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              error={fieldErrors.password}
+            />
 
-          <p className="mc-auth-panel__forgot-wrap">
-            <Link to="/forgot-password" className="mc-auth-panel__forgot-link">
-              Forgot password?
-            </Link>
-          </p>
+            {formError ? <p className="mc-auth-panel__error">{formError}</p> : null}
 
-          <div className="mc-auth-panel__actions">
-            <Button type="submit" fullWidth className="mc-auth-panel__submit">
-              Login
-            </Button>
+            <p className="mc-auth-panel__forgot-wrap">
+              <Link to="/forgot-password" className="mc-auth-panel__forgot-link">
+                Forgot password?
+              </Link>
+            </p>
+
+            <div className="mc-auth-panel__actions">
+              <Button type="submit" fullWidth className="mc-auth-panel__submit">
+                Login
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="mc-auth-panel__form">
+            <form onSubmit={handleMagicRequest} noValidate>
+              <Input
+                label="Email"
+                type="email"
+                placeholder="Enter your email"
+                autoComplete="email"
+                icon={<MailIcon />}
+                name="magicEmail"
+                value={magicEmail}
+                onChange={(event) => setMagicEmail(event.target.value)}
+              />
+              <div className="mc-auth-panel__actions">
+                <Button type="submit" fullWidth>
+                  Send magic link
+                </Button>
+              </div>
+            </form>
+
+            <form onSubmit={handleMagicVerify} noValidate style={{ marginTop: '16px' }}>
+              <Input
+                label="Magic token"
+                placeholder="Paste the token from the console"
+                name="magicToken"
+                value={magicToken}
+                onChange={(event) => setMagicToken(event.target.value)}
+              />
+              <div className="mc-auth-panel__actions">
+                <Button type="submit" fullWidth>
+                  Verify token
+                </Button>
+              </div>
+            </form>
+
+            {magicMessage ? <p className="mc-auth-panel__subtitle">{magicMessage}</p> : null}
           </div>
-        </form>
+        )}
 
         <p className="mc-auth-panel__footer">
           Don't have an account? <Link to="/register">Register</Link>
         </p>
+
+        <div className="mc-auth-panel__actions" style={{ marginTop: '12px' }}>
+          <Button
+            type="button"
+            fullWidth
+            variant="secondary"
+            onClick={() => {
+              window.location.href = '/auth/github'
+            }}
+          >
+            Continue with GitHub
+          </Button>
+        </div>
       </div>
     </section>
   )

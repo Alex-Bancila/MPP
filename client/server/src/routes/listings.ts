@@ -4,6 +4,7 @@ import type { ListingsService } from '../services/listingsService'
 import type { UsersService } from '../services/usersService'
 import { addListingToStore, removeListingFromStore, updateListingInStore } from '../db/storeUpdates'
 import { parseInput, sendNotFound } from '../lib/http'
+import { requirePermission } from '../lib/auth'
 import {
   createListingSchema,
   listingParamsSchema,
@@ -55,9 +56,15 @@ export const registerListingsRoutes = (
   })
 
   app.post('/listings', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'listing:create')
+    if (!auth) return
     const parsed = parseInput(reply, createListingSchema, request.body)
     if (!parsed) {
       return
+    }
+
+    if (auth.sub !== parsed.sellerId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only create listings on your own behalf.' })
     }
 
     const seller = await deps.usersService.getById(parsed.sellerId)
@@ -73,9 +80,21 @@ export const registerListingsRoutes = (
   })
 
   app.patch('/listings/:listingId', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'listing:update')
+    if (!auth) return
     const params = parseInput(reply, listingParamsSchema, request.params)
     if (!params) {
       return
+    }
+
+    const existing = await deps.listingsService.getById(params.listingId)
+    if (!existing) {
+      sendNotFound(reply, 'Listing')
+      return
+    }
+
+    if (auth.sub !== existing.sellerId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only edit your own listings.' })
     }
 
     const body = parseInput(reply, updateListingSchema, request.body)
@@ -95,9 +114,21 @@ export const registerListingsRoutes = (
   })
 
   app.delete('/listings/:listingId', async (request, reply) => {
+    const auth = await requirePermission(request, reply, 'listing:delete')
+    if (!auth) return
     const parsed = parseInput(reply, listingParamsSchema, request.params)
     if (!parsed) {
       return
+    }
+
+    const existing = await deps.listingsService.getById(parsed.listingId)
+    if (!existing) {
+      sendNotFound(reply, 'Listing')
+      return
+    }
+
+    if (auth.sub !== existing.sellerId && auth.role !== 'admin') {
+      return reply.code(403).send({ message: 'You can only delete your own listings.' })
     }
 
     const deleted = await deps.listingsService.delete(parsed.listingId)

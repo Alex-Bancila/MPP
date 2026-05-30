@@ -1,5 +1,3 @@
-import { readFileSync } from 'fs'
-import { join } from 'path'
 import { buildApp } from './app'
 
 const start = async () => {

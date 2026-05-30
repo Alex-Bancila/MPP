@@ -2,6 +2,8 @@ import { createBrowserRouter } from 'react-router-dom'
 
 import { FavouritesPage } from '@/pages/FavouritesPage'
 import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
+import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
 import { LandingPage } from '@/pages/LandingPage'
 import { ListingDetailPage } from '@/pages/ListingDetailPage'
 import { ListingFormPage } from '@/pages/ListingFormPage'
@@ -16,6 +18,8 @@ import { AppLayout } from '@/shared/components/layout/AppLayout'
 import { AuthLayout } from '@/shared/components/layout/AuthLayout'
 import { LandingLayout } from '@/shared/components/layout/LandingLayout'
 import { AdminPage } from '@/pages/AdminPage'
+import { ProtectedRoute } from '@/shared/components/routing/ProtectedRoute'
+import { AdminRoute } from '@/shared/components/routing/AdminRoute'
 
 export const appRouter = createBrowserRouter([
   {
@@ -35,18 +39,36 @@ export const appRouter = createBrowserRouter([
     ),
   },
   {
-  path: '/admin',
-  element: (
-    <AppLayout>
-      <AdminPage />
-    </AppLayout>
-  ),
-},
+    path: '/admin',
+    element: (
+      <AdminRoute>
+        <AppLayout>
+          <AdminPage />
+        </AppLayout>
+      </AdminRoute>
+    ),
+  },
   {
     path: '/forgot-password',
     element: (
       <AuthLayout>
         <ForgotPasswordPage />
+      </AuthLayout>
+    ),
+  },
+  {
+    path: '/reset-password',
+    element: (
+      <AuthLayout>
+        <ResetPasswordPage />
+      </AuthLayout>
+    ),
+  },
+  {
+    path: '/auth/callback',
+    element: (
+      <AuthLayout>
+        <AuthCallbackPage />
       </AuthLayout>
     ),
   },
@@ -69,9 +91,11 @@ export const appRouter = createBrowserRouter([
   {
     path: '/listings/new',
     element: (
-      <AppLayout>
-        <ListingFormPage />
-      </AppLayout>
+      <ProtectedRoute>
+        <AppLayout>
+          <ListingFormPage />
+        </AppLayout>
+      </ProtectedRoute>
     ),
   },
   {
@@ -85,25 +109,31 @@ export const appRouter = createBrowserRouter([
   {
     path: '/listings/:listingId/edit',
     element: (
-      <AppLayout>
-        <ListingFormPage />
-      </AppLayout>
+      <ProtectedRoute>
+        <AppLayout>
+          <ListingFormPage />
+        </AppLayout>
+      </ProtectedRoute>
     ),
   },
   {
     path: '/favourites',
     element: (
-      <AppLayout>
-        <FavouritesPage />
-      </AppLayout>
+      <ProtectedRoute>
+        <AppLayout>
+          <FavouritesPage />
+        </AppLayout>
+      </ProtectedRoute>
     ),
   },
   {
     path: '/messages',
     element: (
-      <AppLayout>
-        <MessagesPage />
-      </AppLayout>
+      <ProtectedRoute>
+        <AppLayout>
+          <MessagesPage />
+        </AppLayout>
+      </ProtectedRoute>
     ),
   },
   {

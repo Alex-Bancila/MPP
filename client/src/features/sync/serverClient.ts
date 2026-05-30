@@ -49,6 +49,27 @@ export const setAuthToken = (token: string | null): void => {
   }
 }
 
+let refreshToken: string | null = null
+
+export const setRefreshToken = (token: string | null): void => {
+  refreshToken = token
+  if (token) {
+    localStorage.setItem('music-core.refresh', token)
+  } else {
+    localStorage.removeItem('music-core.refresh')
+  }
+}
+
+export const getRefreshToken = (): string | null => {
+  if (refreshToken) return refreshToken
+  try {
+    refreshToken = localStorage.getItem('music-core.refresh')
+  } catch {
+    refreshToken = null
+  }
+  return refreshToken
+}
+
 export const getAuthToken = (): string | null => {
   if (authToken) return authToken
   try {
@@ -113,19 +134,30 @@ export const getWebSocketUrl = (): string => {
           ) {
             url.hostname = window.location.hostname
           }
-          return httpBaseToWebSocketUrl(url.toString())
+          const wsUrl = httpBaseToWebSocketUrl(url.toString())
+          const token = getAuthToken()
+          return token ? `${wsUrl}?token=${encodeURIComponent(token)}` : wsUrl
         } catch {
           // fall through
         }
       }
       const url = `ws://${window.location.hostname}:3001/ws`
-      return url
+      const token = getAuthToken()
+      return token ? `${url}?token=${encodeURIComponent(token)}` : url
     }
     const url = httpBaseToWebSocketUrl(window.location.origin)
+    const token = getAuthToken()
+    if (token) {
+      return `${url}?token=${encodeURIComponent(token)}`
+    }
     return url
   }
 
   const url = httpBaseToWebSocketUrl(window.location.origin)
+  const token = getAuthToken()
+  if (token) {
+    return `${url}?token=${encodeURIComponent(token)}`
+  }
   return url
 }
 
@@ -153,14 +185,28 @@ const fetchWithTimeout = async (url: string, options: RequestInit, timeout = REQ
   }
 }
 
-const requestGraphQL = async <T>(query: string, variables?: Record<string, unknown>): Promise<T> => {
-  const response = await fetchWithTimeout(buildUrl('/graphql'), {
+const doGraphQLRequest = async (query: string, variables?: Record<string, unknown>): Promise<Response> => {
+  const token = getAuthToken()
+  return fetchWithTimeout(buildUrl('/graphql'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ query, variables }),
   })
+}
+
+const requestGraphQL = async <T>(query: string, variables?: Record<string, unknown>): Promise<T> => {
+  let response = await doGraphQLRequest(query, variables)
+
+  // Silent token refresh on 401 — retry once with the new token
+  if (response.status === 401) {
+    const refreshed = await refreshServerSession()
+    if (refreshed) {
+      response = await doGraphQLRequest(query, variables)
+    }
+  }
 
   const payload = (await response.json()) as {
     data?: T
@@ -350,25 +396,6 @@ export const getSyncSnapshot = async (): Promise<SyncSnapshot> => {
   return data.syncState
 }
 
-export const loginServerUser = async (input: { email: string; password: string }): Promise<User> => {
-  const response = await fetchWithTimeout(buildUrl('/auth/login'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(input),
-  })
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Login failed' }))
-    throw new Error(error.message ?? `Login failed with status ${response.status}`)
-  }
-
-  const data = await response.json()
-  if (data.token) {
-    setAuthToken(data.token)
-  }
-  return mapAuthUser(data)
-}
-
 const mapAuthUser = (data: {
   id: string
   username: string
@@ -387,6 +414,28 @@ const mapAuthUser = (data: {
   role: data.role ?? 'user',
   permissions: data.permissions ?? [],
 })
+
+export const loginServerUser = async (input: { email: string; password: string }): Promise<User> => {
+  const response = await fetchWithTimeout(buildUrl('/auth/login'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Login failed' }))
+    throw new Error(error.message ?? `Login failed with status ${response.status}`)
+  }
+
+  const data = await response.json()
+  if (data.token) {
+    setAuthToken(data.token)
+  }
+  if (data.refreshToken) {
+    setRefreshToken(data.refreshToken)
+  }
+  return mapAuthUser(data)
+}
 
 export const registerServerUser = async (input: {
   username: string
@@ -408,7 +457,133 @@ export const registerServerUser = async (input: {
   if (data.token) {
     setAuthToken(data.token)
   }
+  if (data.refreshToken) {
+    setRefreshToken(data.refreshToken)
+  }
   return mapAuthUser(data)
+}
+
+export const refreshServerSession = async (): Promise<boolean> => {
+  const token = getRefreshToken()
+  if (!token) return false
+
+  const response = await fetchWithTimeout(buildUrl('/auth/refresh'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: token }),
+  })
+
+  if (!response.ok) {
+    setAuthToken(null)
+    setRefreshToken(null)
+    return false
+  }
+
+  const data = await response.json()
+  if (data.token) setAuthToken(data.token)
+  if (data.refreshToken) setRefreshToken(data.refreshToken)
+  return true
+}
+
+// FIX: restores the session on page reload by calling /auth/me with the stored token
+export const restoreServerSession = async (): Promise<User | null> => {
+  const token = getAuthToken()
+  if (!token) return null
+
+  try {
+    const authHeader: Record<string, string> | undefined = token
+      ? { Authorization: `Bearer ${token}` }
+      : undefined
+    const response = await fetchWithTimeout(buildUrl('/auth/me'), {
+      method: 'GET',
+      headers: authHeader,
+    })
+
+    if (!response.ok) {
+      // Token expired or invalid — clear it so the user isn't stuck
+      setAuthToken(null)
+      setRefreshToken(null)
+      return null
+    }
+
+    const data = await response.json()
+    return mapAuthUser(data)
+  } catch {
+    // Network error — don't clear the token, server may just be temporarily down
+    return null
+  }
+}
+
+export const requestPasswordReset = async (input: { email: string }): Promise<boolean> => {
+  try {
+    const response = await fetchWithTimeout(buildUrl('/auth/forgot'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const resetPassword = async (input: { token: string; password: string }): Promise<boolean> => {
+  try {
+    const response = await fetchWithTimeout(buildUrl('/auth/reset'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const requestMagicLink = async (input: { email: string }): Promise<boolean> => {
+  try {
+    const response = await fetchWithTimeout(buildUrl('/auth/magic/request'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    return response.ok
+  } catch {
+    return false
+  }
+}
+
+export const verifyMagicLink = async (input: { token: string }): Promise<User> => {
+  const response = await fetchWithTimeout(buildUrl('/auth/magic/verify'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Magic link failed' }))
+    throw new Error(error.message ?? `Magic link failed with status ${response.status}`)
+  }
+
+  const data = await response.json()
+  if (data.token) setAuthToken(data.token)
+  if (data.refreshToken) setRefreshToken(data.refreshToken)
+  return mapAuthUser(data)
+}
+
+export const logoutServerSession = async (): Promise<void> => {
+  const token = getRefreshToken()
+  if (!token) {
+    setAuthToken(null)
+    return
+  }
+  await fetchWithTimeout(buildUrl('/auth/logout'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken: token }),
+  }).catch(() => undefined)
+  setAuthToken(null)
+  setRefreshToken(null)
 }
 
 export const getServerListings = async (query: ListingsPageQuery): Promise<ListingsPageResponse> => {
