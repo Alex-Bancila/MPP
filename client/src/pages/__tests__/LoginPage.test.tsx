@@ -22,7 +22,7 @@ vi.mock('@/features/sync/serverClient', async (importOriginal) => {
       if (!user || !verifyPassword(input.password, user.passwordHash)) {
         throw new Error('Invalid email or password.')
       }
-      return user
+      return { kind: 'success' as const, user }
     }),
     // FIX: prevent the session-restore useEffect from firing during tests
     restoreServerSession: vi.fn(async () => null),

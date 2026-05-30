@@ -32,6 +32,7 @@ const users: User[] = [
       'chat:send',
       'admin:read',
       'audit:read',
+      'user:ban',
     ],
   },
   {

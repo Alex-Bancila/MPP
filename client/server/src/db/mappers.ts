@@ -32,6 +32,9 @@ export const mapUser = (user: PrismaUser): User => ({
   avatarUrl: user.avatarUrl,
   createdAt: toIso(user.createdAt),
   role: isAdminRoleId(user.roleId) ? 'admin' : 'user',
+  banned: user.banned,
+  bannedReason: user.bannedReason,
+  bannedAt: user.bannedAt ? toIso(user.bannedAt) : null,
   permissions:
     isAdminRoleId(user.roleId)
       ? [
@@ -45,6 +48,7 @@ export const mapUser = (user: PrismaUser): User => ({
           'chat:send',
           'admin:read',
           'audit:read',
+          'user:ban',
         ]
       : [
           'listing:create',

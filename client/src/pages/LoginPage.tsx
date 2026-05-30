@@ -30,7 +30,7 @@ const LockIcon = () => {
 
 export const LoginPage = () => {
   const navigate = useNavigate()
-  const { currentUser, login, loginWithMagic, requestMagic } = useAuth()
+  const { currentUser, login, verifyTwoFactor, loginWithMagic, requestMagic } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -40,6 +40,8 @@ export const LoginPage = () => {
   const [magicEmail, setMagicEmail] = useState('')
   const [magicToken, setMagicToken] = useState('')
   const [magicMessage, setMagicMessage] = useState('')
+  const [twoFactorChallengeId, setTwoFactorChallengeId] = useState<string | null>(null)
+  const [passKey, setPassKey] = useState('')
 
   useEffect(() => {
     if (currentUser) {
@@ -77,7 +79,37 @@ export const LoginPage = () => {
       return
     }
 
+    if (result.twoFactorRequired && result.challengeId) {
+      setTwoFactorChallengeId(result.challengeId)
+      setPassKey('')
+      return
+    }
+
     navigate('/listings')
+  }
+
+  const handleVerify2fa = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setFormError('')
+    if (!twoFactorChallengeId) return
+    if (!passKey.trim()) {
+      setFormError('Enter the pass key sent to your email.')
+      return
+    }
+
+    const result = await verifyTwoFactor(twoFactorChallengeId, passKey.trim())
+    if (!result.ok) {
+      setFormError(result.message ?? 'Invalid or expired pass key.')
+      return
+    }
+
+    navigate('/listings')
+  }
+
+  const cancelTwoFactor = () => {
+    setTwoFactorChallengeId(null)
+    setPassKey('')
+    setFormError('')
   }
 
   const handleMagicRequest = async (event: FormEvent<HTMLFormElement>) => {
@@ -119,6 +151,38 @@ export const LoginPage = () => {
           Login
         </h1>
 
+        {twoFactorChallengeId ? (
+          <form className="mc-auth-panel__form" onSubmit={handleVerify2fa} noValidate>
+            <p className="mc-auth-panel__subtitle">
+              This is an admin account. Enter the one-time pass key we emailed you
+              (in development, check the server console).
+            </p>
+            <Input
+              label="Pass key"
+              placeholder="Enter the 6-digit pass key"
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              icon={<LockIcon />}
+              name="passKey"
+              value={passKey}
+              onChange={(event) => setPassKey(event.target.value)}
+            />
+
+            {formError ? <p className="mc-auth-panel__error">{formError}</p> : null}
+
+            <div className="mc-auth-panel__actions">
+              <Button type="submit" fullWidth className="mc-auth-panel__submit">
+                Verify pass key
+              </Button>
+            </div>
+            <div className="mc-auth-panel__actions" style={{ marginTop: '8px' }}>
+              <Button type="button" fullWidth variant="ghost" onClick={cancelTwoFactor}>
+                Back to login
+              </Button>
+            </div>
+          </form>
+        ) : (
+        <>
         <div className="mc-tabs" role="tablist" aria-label="Login methods">
           <button
             type="button"
@@ -238,6 +302,8 @@ export const LoginPage = () => {
             Continue with GitHub
           </Button>
         </div>
+        </>
+        )}
       </div>
     </section>
   )

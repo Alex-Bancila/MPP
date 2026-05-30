@@ -16,23 +16,26 @@ vi.mock('@/features/sync/serverClient', async (importOriginal) => {
     getServerReachable: vi.fn(async () => true),
     registerServerUser: vi.fn(async (input) => {
       return {
-        id: 'user_mock',
-        username: input.username,
-        email: input.email,
-        passwordHash: input.password,
-        avatarUrl: `https://i.pravatar.cc/96?u=${input.email}`,
-        createdAt: new Date().toISOString(),
-        role: 'user' as const,
-        permissions: [
-          'listing:create',
-          'listing:update',
-          'listing:delete',
-          'review:create',
-          'review:update',
-          'review:delete',
-          'favourite:toggle',
-          'chat:send',
-        ],
+        user: {
+          id: 'user_mock',
+          username: input.username,
+          email: input.email,
+          passwordHash: input.password,
+          avatarUrl: `https://i.pravatar.cc/96?u=${input.email}`,
+          createdAt: new Date().toISOString(),
+          role: 'user' as const,
+          permissions: [
+            'listing:create',
+            'listing:update',
+            'listing:delete',
+            'review:create',
+            'review:update',
+            'review:delete',
+            'favourite:toggle',
+            'chat:send',
+          ],
+        },
+        adminRequestPending: false,
       }
     }),
     // FIX: prevent the session-restore useEffect from firing during tests

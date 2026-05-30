@@ -47,16 +47,19 @@ export const RegisterPage = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [requestAdmin, setRequestAdmin] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<
     Partial<Record<'username' | 'email' | 'password' | 'confirmPassword', string>>
   >({})
   const [formError, setFormError] = useState('')
+  const [adminNotice, setAdminNotice] = useState('')
 
   useEffect(() => {
-    if (currentUser) {
+    // Hold on the register page when an admin request is pending so the user sees the notice.
+    if (currentUser && !adminNotice) {
       navigate('/listings', { replace: true })
     }
-  }, [currentUser, navigate])
+  }, [currentUser, navigate, adminNotice])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -67,6 +70,7 @@ export const RegisterPage = () => {
       username,
       email,
       password,
+      requestAdmin,
     })
 
     const nextErrors: Partial<Record<'username' | 'email' | 'password' | 'confirmPassword', string>> = {}
@@ -93,10 +97,20 @@ export const RegisterPage = () => {
       username: username.trim(),
       email: email.trim(),
       password,
+      requestAdmin,
     })
 
     if (!result.ok) {
       setFormError(result.message ?? 'Unable to register right now.')
+      return
+    }
+
+    if (result.adminRequestPending) {
+      setAdminNotice(
+        'Your account was created and your admin access request was sent to the administrators. ' +
+          'You can keep using the app as a regular user — once an admin approves your request, ' +
+          'sign in again to unlock admin access.',
+      )
       return
     }
 
@@ -164,6 +178,30 @@ export const RegisterPage = () => {
             error={fieldErrors.confirmPassword}
           />
 
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '8px',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+            }}
+          >
+            <input
+              type="checkbox"
+              name="requestAdmin"
+              checked={requestAdmin}
+              onChange={(event) => setRequestAdmin(event.target.checked)}
+              style={{ marginTop: '3px' }}
+            />
+            <span>
+              Request admin access
+              <span style={{ display: 'block', opacity: 0.6 }}>
+                An existing admin must approve your request before it takes effect.
+              </span>
+            </span>
+          </label>
+
           {formError ? <p className="mc-auth-panel__error">{formError}</p> : null}
 
           <div className="mc-auth-panel__actions mc-auth-panel__actions--register">
@@ -172,6 +210,13 @@ export const RegisterPage = () => {
             </Button>
           </div>
         </form>
+
+        {adminNotice ? (
+          <p className="mc-auth-panel__subtitle" role="status" style={{ marginTop: '12px' }}>
+            {adminNotice}{' '}
+            <Link to="/listings">Continue to listings</Link>
+          </p>
+        ) : null}
 
         <p className="mc-auth-panel__footer mc-auth-panel__footer--register">
           Already have an account? <Link to="/login">Login</Link>

@@ -1,4 +1,4 @@
-import type { User } from '../shared'
+import type { User, AdminAccessRequest } from '../shared'
 import { createId, hashPassword, verifyPassword } from '../shared'
 import type { MemoryStore } from '../storage/memoryStore'
 import type { RolesService } from './rolesService'
@@ -10,12 +10,22 @@ export interface LoginResult {
   permissions: string[]
 }
 
+export interface RegisterResult extends LoginResult {
+  adminRequest?: AdminAccessRequest
+}
+
 export interface AuthService {
-  register: (input: { username: string; email: string; password: string }) => Promise<LoginResult>
+  register: (input: {
+    username: string
+    email: string
+    password: string
+    requestAdmin?: boolean
+  }) => Promise<RegisterResult>
   login: (input: { email: string; password: string }) => Promise<LoginResult>
   updatePassword: (input: { userId: string; password: string }) => Promise<User>
   findByEmail: (email: string) => Promise<User | null>
   getWithPermissions: (user: User) => Promise<User>
+  promoteToAdmin: (userId: string) => Promise<User>
 }
 
 const DEFAULT_USER_PERMISSIONS = [
@@ -33,6 +43,7 @@ const DEFAULT_ADMIN_PERMISSIONS = [
   ...DEFAULT_USER_PERMISSIONS,
   'admin:read',
   'audit:read',
+  'user:ban',
 ]
 
 export const createAuthService = (
@@ -89,7 +100,32 @@ export const createAuthService = (
 
       store.state.users.push(user)
 
-      return { user, permissions }
+      let adminRequest: AdminAccessRequest | undefined
+      if (input.requestAdmin) {
+        const now = new Date().toISOString()
+        adminRequest = {
+          id: createId('adminreq'),
+          userId: user.id,
+          username: user.username,
+          email: user.email,
+          status: 'pending',
+          note: null,
+          createdAt: now,
+          resolvedAt: null,
+          resolvedById: null,
+        }
+        await prisma.adminAccessRequest.create({
+          data: {
+            id: adminRequest.id,
+            userId: adminRequest.userId,
+            status: 'pending',
+            createdAt: new Date(now),
+          },
+        })
+        store.adminRequests = [adminRequest, ...store.adminRequests]
+      }
+
+      return { user, permissions, adminRequest }
     },
     login: async (input) => {
       const email = input.email.trim().toLowerCase()
@@ -97,6 +133,12 @@ export const createAuthService = (
       if (!user || !verifyPassword(input.password, user.passwordHash)) {
         store.authLog.push({ email, at: new Date().toISOString() })
         throw new Error('Invalid email or password.')
+      }
+
+      if (user.banned) {
+        throw new Error(
+          `Your account has been banned. Reason: ${user.bannedReason ?? 'suspicious activity'}`,
+        )
       }
 
       const roleRow = user.role ? await rolesService.getRole(user.role) : null
@@ -128,6 +170,29 @@ export const createAuthService = (
         ?? roleRow?.permissions.map((row) => row.name)
         ?? DEFAULT_USER_PERMISSIONS
       return { ...user, permissions }
+    },
+    promoteToAdmin: async (userId) => {
+      const userIndex = store.state.users.findIndex((u) => u.id === userId)
+      if (userIndex === -1) {
+        throw new Error('User not found.')
+      }
+
+      const adminRoleRow = await rolesService.getRole('admin')
+      const permissions = adminRoleRow?.permissions.map((row) => row.name) ?? DEFAULT_ADMIN_PERMISSIONS
+
+      const dbRole = await prisma.role.findFirst({ where: { name: 'admin' } })
+      await prisma.user.update({
+        where: { id: userId },
+        data: { roleId: dbRole?.id ?? 'role_admin' },
+      })
+
+      const updated: User = {
+        ...store.state.users[userIndex],
+        role: 'admin',
+        permissions,
+      }
+      store.state.users[userIndex] = updated
+      return updated
     },
   }
 }

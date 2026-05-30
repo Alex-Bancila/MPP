@@ -28,6 +28,17 @@ export interface CreateRefreshTokenInput {
   ip?: string
 }
 
+export interface TwoFactorChallengeRecord {
+  challengeId: string
+  userId: string
+  code: string
+  createdAt: string
+  expiresAt: string
+  attempts: number
+}
+
+const MAX_TWO_FACTOR_ATTEMPTS = 5
+
 export interface TokenStore {
   createRefreshToken: (input: CreateRefreshTokenInput) => RefreshTokenRecord
   getRefreshToken: (token: string) => RefreshTokenRecord | null
@@ -37,6 +48,8 @@ export interface TokenStore {
   listUserSessions: (userId: string) => RefreshTokenRecord[]
   createOneTimeToken: (type: OneTimeTokenType, userId: string, ttlMs: number) => OneTimeTokenRecord
   consumeOneTimeToken: (type: OneTimeTokenType, token: string) => OneTimeTokenRecord | null
+  createTwoFactorChallenge: (userId: string, ttlMs: number) => { challengeId: string; code: string }
+  verifyTwoFactorChallenge: (challengeId: string, code: string) => string | null
   cleanupExpired: () => void
 }
 
@@ -50,9 +63,15 @@ const createToken = (bytes = 32): string => {
   return randomBytes(bytes).toString('hex')
 }
 
+const createNumericCode = (): string => {
+  // 6-digit human-friendly pass key, zero-padded.
+  return String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+}
+
 export const createTokenStore = (): TokenStore => {
   const refreshTokens = new Map<string, RefreshTokenRecord>()
   const oneTimeTokens = new Map<string, OneTimeTokenRecord>()
+  const twoFactorChallenges = new Map<string, TwoFactorChallengeRecord>()
 
   const cleanupExpired = () => {
     for (const [token, record] of refreshTokens) {
@@ -63,6 +82,11 @@ export const createTokenStore = (): TokenStore => {
     for (const [token, record] of oneTimeTokens) {
       if (isExpired(record.expiresAt)) {
         oneTimeTokens.delete(token)
+      }
+    }
+    for (const [id, record] of twoFactorChallenges) {
+      if (isExpired(record.expiresAt)) {
+        twoFactorChallenges.delete(id)
       }
     }
   }
@@ -160,6 +184,40 @@ export const createTokenStore = (): TokenStore => {
       }
       oneTimeTokens.delete(token)
       return record
+    },
+    createTwoFactorChallenge: (userId, ttlMs) => {
+      cleanupExpired()
+      const challengeId = randomUUID()
+      const code = createNumericCode()
+      const createdAt = nowIso()
+      const expiresAt = new Date(Date.now() + ttlMs).toISOString()
+      twoFactorChallenges.set(challengeId, {
+        challengeId,
+        userId,
+        code,
+        createdAt,
+        expiresAt,
+        attempts: 0,
+      })
+      return { challengeId, code }
+    },
+    verifyTwoFactorChallenge: (challengeId, code) => {
+      cleanupExpired()
+      const record = twoFactorChallenges.get(challengeId)
+      if (!record || isExpired(record.expiresAt)) {
+        twoFactorChallenges.delete(challengeId)
+        return null
+      }
+      if (record.attempts >= MAX_TWO_FACTOR_ATTEMPTS) {
+        twoFactorChallenges.delete(challengeId)
+        return null
+      }
+      if (record.code !== code.trim()) {
+        record.attempts += 1
+        return null
+      }
+      twoFactorChallenges.delete(challengeId)
+      return record.userId
     },
     cleanupExpired,
   }

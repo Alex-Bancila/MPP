@@ -5,8 +5,9 @@ import type { MemoryStore } from '../storage/memoryStore'
 import type { ServerHub } from '../transport/serverHub'
 import type { AuditService } from '../services/auditService'
 import type { TokenStore } from '../storage/tokenStore'
+import type { Mailer } from '../lib/mailer'
 import { addUserToStore } from '../db/storeUpdates'
-import { JWT_EXPIRY, REFRESH_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS, MAGIC_TOKEN_TTL_MS } from '../app'
+import { JWT_EXPIRY, REFRESH_TOKEN_TTL_MS, RESET_TOKEN_TTL_MS, MAGIC_TOKEN_TTL_MS, TWO_FACTOR_TTL_MS } from '../app'
 import { requireAuth } from '../lib/auth'
 
 export interface RegisterAuthRoutesDeps {
@@ -15,6 +16,7 @@ export interface RegisterAuthRoutesDeps {
   store: MemoryStore
   auditService: AuditService
   tokens: TokenStore
+  mailer: Mailer
 }
 
 export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoutesDeps): void => {
@@ -40,6 +42,40 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
     return { accessToken, refreshToken: refresh.token, expiresIn: JWT_EXPIRY }
   }
 
+  // Issues tokens, syncs the store, audits, and returns the full auth payload.
+  // Shared by password login, 2FA verification, and magic-link login.
+  const finalizeLogin = (
+    user: { id: string; username: string; email: string; passwordHash: string; avatarUrl: string; createdAt: string; role?: 'admin' | 'user'; permissions?: string[] },
+    request: any,
+    reply: any,
+    audit: { action: string; details: string },
+  ) => {
+    addUserToStore(deps.store, user)
+    deps.hub.broadcast({ users: [user], sync: deps.store.state.sync })
+
+    const { accessToken, refreshToken, expiresIn } = issueTokens(user, request)
+
+    void deps.auditService.recordAction({
+      userId: user.id,
+      role: (user.role ?? 'user') as 'admin' | 'user',
+      action: audit.action,
+      details: audit.details,
+    })
+
+    return reply.send({
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      createdAt: user.createdAt,
+      role: user.role,
+      permissions: user.permissions,
+      token: accessToken,
+      refreshToken,
+      expiresIn,
+    })
+  }
+
   app.post('/auth/login', async (request, reply) => {
     const { email, password } = request.body as { email?: string; password?: string }
 
@@ -60,29 +96,29 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
         permissions: result.permissions,
       }
 
-      addUserToStore(deps.store, user)
-      deps.hub.broadcast({ users: [user], sync: deps.store.state.sync })
+      // Admin accounts require a second factor: an emailed pass key.
+      if (user.role === 'admin') {
+        const { challengeId, code } = deps.tokens.createTwoFactorChallenge(user.id, TWO_FACTOR_TTL_MS)
+        await deps.mailer.sendEmail({
+          to: user.email,
+          subject: 'Your Music Core admin login pass key',
+          body: `Your one-time pass key is ${code}. It expires in 5 minutes.`,
+        })
+        console.log(`[Auth] 2FA pass key for ${user.email}: ${code}`)
 
-      const { accessToken, refreshToken, expiresIn } = issueTokens(user, request)
+        await deps.auditService.recordAction({
+          userId: user.id,
+          role: 'admin',
+          action: 'auth/2fa',
+          details: `2FA pass key issued for ${user.username}`,
+        })
 
-      await deps.auditService.recordAction({
-        userId: user.id,
-        role: user.role ?? 'user',
+        return reply.send({ twoFactorRequired: true, challengeId })
+      }
+
+      return finalizeLogin(user, request, reply, {
         action: 'auth/login',
         details: `User ${user.username} logged in`,
-      })
-
-      return reply.send({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        createdAt: user.createdAt,
-        role: user.role,
-        permissions: user.permissions,
-        token: accessToken,
-        refreshToken,
-        expiresIn,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Login failed.'
@@ -90,11 +126,41 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
     }
   })
 
+  app.post('/auth/login/verify-2fa', async (request, reply) => {
+    const { challengeId, code } = request.body as { challengeId?: string; code?: string }
+
+    if (!challengeId || !code) {
+      return reply.code(400).send({ message: 'Challenge id and pass key are required.' })
+    }
+
+    const userId = deps.tokens.verifyTwoFactorChallenge(challengeId, code)
+    if (!userId) {
+      return reply.code(401).send({ message: 'Invalid or expired pass key.' })
+    }
+
+    const user = deps.store.state.users.find((u) => u.id === userId)
+    if (!user) {
+      return reply.code(401).send({ message: 'User not found.' })
+    }
+
+    if (user.banned) {
+      return reply.code(403).send({
+        message: `Your account has been banned. Reason: ${user.bannedReason ?? 'suspicious activity'}`,
+      })
+    }
+
+    return finalizeLogin(user, request, reply, {
+      action: 'auth/login',
+      details: `Admin ${user.username} completed 2FA login`,
+    })
+  })
+
   app.post('/auth/register', async (request, reply) => {
-    const { username, email, password } = request.body as {
+    const { username, email, password, requestAdmin } = request.body as {
       username?: string
       email?: string
       password?: string
+      requestAdmin?: boolean
     }
 
     if (!username || !email || !password) {
@@ -102,7 +168,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
     }
 
     try {
-      const result = await deps.authService.register({ username, email, password })
+      const result = await deps.authService.register({ username, email, password, requestAdmin })
       const user = {
         id: result.user.id,
         username: result.user.username,
@@ -126,6 +192,26 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
         details: `User ${user.username} registered`,
       })
 
+      // Notify existing admins that someone requested admin access.
+      if (result.adminRequest) {
+        const admins = deps.store.state.users.filter((u) => u.role === 'admin')
+        await Promise.all(
+          admins.map((admin) =>
+            deps.mailer.sendEmail({
+              to: admin.email,
+              subject: 'New admin access request',
+              body: `${user.username} (${user.email}) has requested admin access. Review it on the Admin page.`,
+            }),
+          ),
+        )
+        await deps.auditService.recordAction({
+          userId: user.id,
+          role: 'user',
+          action: 'admin/request',
+          details: `${user.username} requested admin access`,
+        })
+      }
+
       return reply.send({
         id: user.id,
         username: user.username,
@@ -134,6 +220,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
         createdAt: user.createdAt,
         role: user.role,
         permissions: user.permissions,
+        adminRequestPending: Boolean(result.adminRequest),
         token: accessToken,
         refreshToken,
         expiresIn,
@@ -166,6 +253,13 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
     const user = deps.store.state.users.find((u) => u.id === record.userId)
     if (!user) {
       return reply.code(401).send({ message: 'User not found.' })
+    }
+
+    if (user.banned) {
+      deps.tokens.revokeUserTokens(user.id)
+      return reply.code(403).send({
+        message: `Your account has been banned. Reason: ${user.bannedReason ?? 'suspicious activity'}`,
+      })
     }
 
     const token = app.jwt.sign({

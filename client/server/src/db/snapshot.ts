@@ -51,7 +51,7 @@ const dedupeMessages = (messages: Message[]): Message[] => {
 }
 
 export const syncStoreFromDb = async (db: PrismaClient, store: MemoryStore): Promise<void> => {
-  const [users, listings, reviews, favourites, conversations, postgresMessages] =
+  const [users, listings, reviews, favourites, conversations, postgresMessages, adminRequests] =
     await Promise.all([
     db.user.findMany({ orderBy: { createdAt: 'desc' } }),
     db.listing.findMany({ orderBy: { datePosted: 'desc' } }),
@@ -59,6 +59,7 @@ export const syncStoreFromDb = async (db: PrismaClient, store: MemoryStore): Pro
     db.favourite.findMany({ orderBy: { createdAt: 'desc' } }),
     db.conversation.findMany({ orderBy: { createdAt: 'desc' } }),
     db.message.findMany({ orderBy: { createdAt: 'asc' } }),
+    db.adminAccessRequest.findMany({ orderBy: { createdAt: 'desc' } }),
   ])
 
   let mongoMessages: ChatMessageRow[] = []
@@ -83,9 +84,27 @@ export const syncStoreFromDb = async (db: PrismaClient, store: MemoryStore): Pro
     }),
   ])
 
+  const mappedUsers = users.map(mapUser)
+  const usersById = new Map(mappedUsers.map((user) => [user.id, user]))
+
+  store.adminRequests = adminRequests.map((request) => {
+    const user = usersById.get(request.userId)
+    return {
+      id: request.id,
+      userId: request.userId,
+      username: user?.username ?? 'Unknown',
+      email: user?.email ?? '',
+      status: request.status as 'pending' | 'approved' | 'rejected',
+      note: request.note,
+      createdAt: request.createdAt.toISOString(),
+      resolvedAt: request.resolvedAt ? request.resolvedAt.toISOString() : null,
+      resolvedById: request.resolvedById,
+    }
+  })
+
   store.state = {
     ...store.state,
-    users: users.map(mapUser),
+    users: mappedUsers,
     listings: listings.map(mapListing),
     reviews: reviews.map(mapReview),
     favourites: favourites.map(mapFavourite),

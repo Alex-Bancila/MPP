@@ -34,6 +34,7 @@ const ADMIN_PERMISSIONS: RolePermissionRow[] = [
   ...USER_PERMISSIONS,
   { id: 'perm_a_read', name: 'admin:read', description: 'Access admin panel' },
   { id: 'perm_au_read', name: 'audit:read', description: 'Access audit logs' },
+  { id: 'perm_u_ban', name: 'user:ban', description: 'Ban and unban users' },
 ]
 
 const ROLES: RoleRow[] = [

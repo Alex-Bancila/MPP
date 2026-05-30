@@ -415,7 +415,20 @@ const mapAuthUser = (data: {
   permissions: data.permissions ?? [],
 })
 
-export const loginServerUser = async (input: { email: string; password: string }): Promise<User> => {
+export type LoginOutcome =
+  | { kind: 'success'; user: User }
+  | { kind: '2fa'; challengeId: string }
+
+const persistTokens = (data: { token?: string; refreshToken?: string }): void => {
+  if (data.token) {
+    setAuthToken(data.token)
+  }
+  if (data.refreshToken) {
+    setRefreshToken(data.refreshToken)
+  }
+}
+
+export const loginServerUser = async (input: { email: string; password: string }): Promise<LoginOutcome> => {
   const response = await fetchWithTimeout(buildUrl('/auth/login'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -428,20 +441,41 @@ export const loginServerUser = async (input: { email: string; password: string }
   }
 
   const data = await response.json()
-  if (data.token) {
-    setAuthToken(data.token)
+  if (data.twoFactorRequired) {
+    return { kind: '2fa', challengeId: data.challengeId }
   }
-  if (data.refreshToken) {
-    setRefreshToken(data.refreshToken)
+  persistTokens(data)
+  return { kind: 'success', user: mapAuthUser(data) }
+}
+
+export const verifyTwoFactor = async (input: { challengeId: string; code: string }): Promise<User> => {
+  const response = await fetchWithTimeout(buildUrl('/auth/login/verify-2fa'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Verification failed' }))
+    throw new Error(error.message ?? `Verification failed with status ${response.status}`)
   }
+
+  const data = await response.json()
+  persistTokens(data)
   return mapAuthUser(data)
+}
+
+export interface RegisterOutcome {
+  user: User
+  adminRequestPending: boolean
 }
 
 export const registerServerUser = async (input: {
   username: string
   email: string
   password: string
-}): Promise<User> => {
+  requestAdmin?: boolean
+}): Promise<RegisterOutcome> => {
   const response = await fetchWithTimeout(buildUrl('/auth/register'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -454,13 +488,8 @@ export const registerServerUser = async (input: {
   }
 
   const data = await response.json()
-  if (data.token) {
-    setAuthToken(data.token)
-  }
-  if (data.refreshToken) {
-    setRefreshToken(data.refreshToken)
-  }
-  return mapAuthUser(data)
+  persistTokens(data)
+  return { user: mapAuthUser(data), adminRequestPending: Boolean(data.adminRequestPending) }
 }
 
 export const refreshServerSession = async (): Promise<boolean> => {
@@ -939,6 +968,82 @@ export const getAdminDashboard = async (limit = 25): Promise<AdminDashboardData>
     { limit },
   )
   return data.adminDashboard
+}
+
+export interface AdminAccessRequest {
+  id: string
+  userId: string
+  username: string
+  email: string
+  status: 'pending' | 'approved' | 'rejected'
+  note: string | null
+  createdAt: string
+  resolvedAt: string | null
+  resolvedById: string | null
+}
+
+// Authenticated REST request with the same silent refresh-on-401 retry as requestGraphQL,
+// so admin calls don't fail once the short-lived access token expires.
+const requestAdminJson = async <T>(
+  path: string,
+  method: 'GET' | 'POST',
+  body?: Record<string, unknown>,
+): Promise<T> => {
+  const send = () =>
+    fetchWithTimeout(buildUrl(path), {
+      method,
+      // Only declare a JSON content-type when we actually send a body — Fastify rejects
+      // an empty body when Content-Type is application/json (approve/reject send none).
+      ...(body
+        ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        : {}),
+    })
+
+  let response = await send()
+  if (response.status === 401) {
+    const refreshed = await refreshServerSession()
+    if (refreshed) {
+      response = await send()
+    }
+  }
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'Request failed' }))
+    throw new Error(error.message ?? `Request failed with status ${response.status}`)
+  }
+  return response.json() as Promise<T>
+}
+
+export const getAdminRequests = async (): Promise<AdminAccessRequest[]> => {
+  const data = await requestAdminJson<{ requests: AdminAccessRequest[] }>('/admin/requests', 'GET')
+  return data.requests
+}
+
+export const approveAdminRequest = async (id: string): Promise<AdminAccessRequest> => {
+  const data = await requestAdminJson<{ request: AdminAccessRequest }>(`/admin/requests/${id}/approve`, 'POST')
+  return data.request
+}
+
+export const rejectAdminRequest = async (id: string): Promise<AdminAccessRequest> => {
+  const data = await requestAdminJson<{ request: AdminAccessRequest }>(`/admin/requests/${id}/reject`, 'POST')
+  return data.request
+}
+
+export interface BanResult {
+  id: string
+  email: string
+  username: string
+  banned: boolean
+  bannedReason: string | null
+  bannedAt: string | null
+}
+
+export const banUser = async (input: { email: string; reason: string }): Promise<BanResult> => {
+  return requestAdminJson<BanResult>('/admin/users/ban', 'POST', input)
+}
+
+export const unbanUser = async (input: { email: string }): Promise<BanResult> => {
+  return requestAdminJson<BanResult>('/admin/users/unban', 'POST', input)
 }
 
 export interface GeneratorStatus {

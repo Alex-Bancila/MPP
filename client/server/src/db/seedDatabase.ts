@@ -19,12 +19,18 @@ const permissions = [
   { id: 'perm_chat_send', name: 'chat:send', description: 'Send chat messages' },
   { id: 'perm_admin_read', name: 'admin:read', description: 'View admin dashboards' },
   { id: 'perm_audit_read', name: 'audit:read', description: 'View logs and suspicious users' },
+  { id: 'perm_user_ban', name: 'user:ban', description: 'Ban and unban users' },
 ]
 
 const rolePermissions = [
   ...permissions.map((permission) => ({ roleId: 'role_admin', permissionId: permission.id })),
   ...permissions
-    .filter((permission) => !permission.name.startsWith('admin:') && !permission.name.startsWith('audit:'))
+    .filter(
+      (permission) =>
+        !permission.name.startsWith('admin:') &&
+        !permission.name.startsWith('audit:') &&
+        !permission.name.startsWith('user:'),
+    )
     .map((permission) => ({ roleId: 'role_user', permissionId: permission.id })),
 ]
 

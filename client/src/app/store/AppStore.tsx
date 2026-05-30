@@ -372,6 +372,20 @@ export const AppStoreProvider = ({ children }: AppStoreProviderProps) => {
   const connectSocketRef = useRef<() => void>(() => {})
   const replayInFlightRef = useRef(false)
 
+  // Coalesces high-frequency WebSocket-driven state replacements into at most one
+  // re-render per animation frame, so a burst of broadcasts (e.g. the data generator)
+  // can't lock up the main thread.
+  const flushFrameRef = useRef<number | null>(null)
+  const scheduleStateFlush = useCallback(() => {
+    if (flushFrameRef.current != null) {
+      return
+    }
+    flushFrameRef.current = window.requestAnimationFrame(() => {
+      flushFrameRef.current = null
+      reducerDispatch({ type: 'state/replace', payload: stateRef.current })
+    })
+  }, [])
+
   useEffect(() => {
     stateRef.current = state
   }, [state])
@@ -549,7 +563,7 @@ export const AppStoreProvider = ({ children }: AppStoreProviderProps) => {
       }
       const nextState = queuedCount > 0 ? applyQueuedMutations(stateWithSync, queueRef.current) : stateWithSync
       stateRef.current = nextState
-      reducerDispatch({ type: 'state/replace', payload: nextState })
+      scheduleStateFlush()
       setIsOnline(true)
       return
     }
@@ -571,7 +585,7 @@ export const AppStoreProvider = ({ children }: AppStoreProviderProps) => {
       }
     }
     stateRef.current = nextState
-    reducerDispatch({ type: 'state/replace', payload: nextState })
+    scheduleStateFlush()
 
     const currentUserId = stateRef.current.currentUserId
     const hasIncomingMessage = payload.messages?.some(
@@ -580,7 +594,7 @@ export const AppStoreProvider = ({ children }: AppStoreProviderProps) => {
     if (hasIncomingMessage) {
       void syncFromServer()
     }
-  }, [syncFromServer])
+  }, [syncFromServer, scheduleStateFlush])
 
   const connectSocket = useCallback(async () => {
     if (!window.navigator.onLine) {
@@ -673,6 +687,11 @@ export const AppStoreProvider = ({ children }: AppStoreProviderProps) => {
       if (reconnectTimerRef.current) {
         clearTimeout(reconnectTimerRef.current)
         reconnectTimerRef.current = null
+      }
+
+      if (flushFrameRef.current != null) {
+        window.cancelAnimationFrame(flushFrameRef.current)
+        flushFrameRef.current = null
       }
 
       if (socketRef.current) {

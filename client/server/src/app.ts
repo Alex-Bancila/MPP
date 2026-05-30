@@ -19,8 +19,10 @@ import { registerStatsRoutes } from './routes/stats'
 import { registerReviewsRoutes } from './routes/reviews'
 import { registerFavouritesRoutes } from './routes/favourites'
 import { registerGeneratorRoutes } from './routes/generator'
+import { registerAdminRoutes } from './routes/admin'
 import type { ServerHub } from './transport/serverHub'
 import { createServerHub } from './transport/serverHub'
+import { createMailer } from './lib/mailer'
 import { prisma } from './db/prisma'
 import { syncStoreFromDb } from './db/snapshot'
 
@@ -30,6 +32,7 @@ export const INACTIVITY_TIMEOUT_MS = 30 * 60 * 1000 // 30 minutes
 export const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 export const RESET_TOKEN_TTL_MS = 15 * 60 * 1000 // 15 minutes
 export const MAGIC_TOKEN_TTL_MS = 10 * 60 * 1000 // 10 minutes
+export const TWO_FACTOR_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 export interface BuildAppResult {
   app: ReturnType<typeof Fastify>
@@ -82,6 +85,7 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
   const store = createMemoryStore()
   const hub = createServerHub()
   const tokens = createTokenStore()
+  const mailer = createMailer()
   await syncStoreFromDb(prisma, store)
   console.log(`[Server] Loaded from DB: ${store.state.users.length} users, ${store.state.listings.length} listings, ${store.state.reviews.length} reviews`)
 
@@ -120,7 +124,8 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
     reviewsService,
     statsService,
   })
-  registerAuthRoutes(app, { authService, auditService, hub, store, tokens })
+  registerAuthRoutes(app, { authService, auditService, hub, store, tokens, mailer })
+  registerAdminRoutes(app, { authService, usersService, auditService, hub, store, tokens, mailer })
   registerWebsocketRoutes(app, { hub, store, chatService })
   registerHealthRoutes(app)
   registerListingsRoutes(app, routeDeps)
@@ -133,10 +138,13 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
     reply.code(404).send({ error: 'Route not found' })
   })
 
-  app.setErrorHandler(async (error, _request, reply) => {
+  app.setErrorHandler(async (error, request, reply) => {
     if (reply.sent) return
     app.log.error(error)
-    reply.code(500).send({ error: 'Internal server error' })
+    // The logger is disabled, so surface the cause to the server console; otherwise
+    // every 500 is invisible and impossible to diagnose.
+    console.error(`[Server] Unhandled error on ${request.method} ${request.url}:`, error)
+    reply.code(500).send({ error: 'Internal server error', message: error instanceof Error ? error.message : 'Internal server error' })
   })
 
   return { app, store, hub, tokens }

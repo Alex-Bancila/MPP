@@ -14,6 +14,7 @@ import {
   logoutServerSession,
   requestMagicLink,
   verifyMagicLink,
+  verifyTwoFactor as verifyTwoFactorRequest,
 } from '@/features/sync/serverClient'
 import { initialAppState } from '@/shared/data/seed'
 import { hashPassword, verifyPassword } from '@/shared/utils/hash'
@@ -122,32 +123,53 @@ export const useAuth = () => {
     return { ok: true }
   }
 
-  const register = async (values: RegisterFormValues): Promise<{ ok: boolean; message?: string }> => {
+  const register = async (
+    values: RegisterFormValues,
+  ): Promise<{ ok: boolean; message?: string; adminRequestPending?: boolean }> => {
     const serverReachable = await getServerReachable()
     if (!serverReachable) {
       return registerLocal(values)
     }
     try {
-      const user = await registerServerUser(values)
+      const { user, adminRequestPending } = await registerServerUser(values)
       dispatch({ type: 'auth/register', payload: user })
-      return { ok: true }
+      return { ok: true, adminRequestPending }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Registration failed.'
       return { ok: false, message }
     }
   }
 
-  const login = async (values: LoginFormValues): Promise<{ ok: boolean; message?: string }> => {
+  const login = async (
+    values: LoginFormValues,
+  ): Promise<{ ok: boolean; message?: string; twoFactorRequired?: boolean; challengeId?: string }> => {
     const serverReachable = await getServerReachable()
     if (!serverReachable) {
       return loginLocal(values)
     }
     try {
-      const user = await loginServerUser(values)
-      dispatch({ type: 'auth/login', payload: { userId: user.id, user } })
+      const outcome = await loginServerUser(values)
+      if (outcome.kind === '2fa') {
+        return { ok: true, twoFactorRequired: true, challengeId: outcome.challengeId }
+      }
+      dispatch({ type: 'auth/login', payload: { userId: outcome.user.id, user: outcome.user } })
       return { ok: true }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Invalid email or password.'
+      return { ok: false, message }
+    }
+  }
+
+  const verifyTwoFactor = async (
+    challengeId: string,
+    code: string,
+  ): Promise<{ ok: boolean; message?: string }> => {
+    try {
+      const user = await verifyTwoFactorRequest({ challengeId, code })
+      dispatch({ type: 'auth/login', payload: { userId: user.id, user } })
+      return { ok: true }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid or expired pass key.'
       return { ok: false, message }
     }
   }
@@ -173,5 +195,5 @@ export const useAuth = () => {
 
   const isAdmin = currentUser?.role === 'admin'
 
-  return { currentUser, register, login, logout, loginWithMagic, requestMagic, hasPermission, isAdmin }
+  return { currentUser, register, login, verifyTwoFactor, logout, loginWithMagic, requestMagic, hasPermission, isAdmin }
 }

@@ -18,6 +18,23 @@ export interface User {
   createdAt: string
   role?: UserRoleName
   permissions?: string[]
+  banned?: boolean
+  bannedReason?: string | null
+  bannedAt?: string | null
+}
+
+export type AdminAccessRequestStatus = 'pending' | 'approved' | 'rejected'
+
+export interface AdminAccessRequest {
+  id: string
+  userId: string
+  username: string
+  email: string
+  status: AdminAccessRequestStatus
+  note: string | null
+  createdAt: string
+  resolvedAt: string | null
+  resolvedById: string | null
 }
 
 export interface Listing {

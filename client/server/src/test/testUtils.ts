@@ -7,6 +7,7 @@ export const createTestApp = async () => {
   result.store.state = structuredClone(initialAppState)
   result.store.logs = []
   result.store.suspiciousUsers = []
+  result.store.adminRequests = []
   return result.app
 }
 

@@ -24,6 +24,7 @@ const wsBase = 'wss://127.0.0.1:3001';
       proxy: {
   '/graphql': { target: apiBase, changeOrigin: true, secure: false },
   '/auth':    { target: apiBase, changeOrigin: true, secure: false },
+  '/admin':   { target: apiBase, changeOrigin: true, secure: false },
   '/health':  { target: apiBase, changeOrigin: true, secure: false },
   '/ws':      { target: wsBase, ws: true, changeOrigin: true, secure: false },
 },

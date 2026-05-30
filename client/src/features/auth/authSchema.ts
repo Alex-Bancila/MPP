@@ -14,6 +14,7 @@ export const registerSchema = z.object({
     .regex(/[a-z]/, 'Password must include a lowercase letter')
     .regex(/[0-9]/, 'Password must include a number')
     .regex(/[^A-Za-z0-9]/, 'Password must include a special character'),
+  requestAdmin: z.boolean().optional(),
 })
 
 export const loginSchema = z.object({

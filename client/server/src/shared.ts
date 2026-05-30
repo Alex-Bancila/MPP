@@ -22,4 +22,6 @@ export type {
   UserRoleName,
   ActionLog,
   SuspiciousUser,
+  AdminAccessRequest,
+  AdminAccessRequestStatus,
 } from '../../src/shared/types/domain'
