@@ -1,4 +1,4 @@
-# Marketplace
+# Music Core
 
 A full-stack marketplace web application where users can register, log in, post
 listings, browse and filter items by category, favourite listings, and view a
