@@ -78,7 +78,9 @@ and no personal server is involved.
 2. Settings:
    - **Root Directory:** `client`
    - **Runtime:** Node
-   - **Build Command:** `npm install && npm run prisma:generate && npm run prisma:deploy`
+   - **Build Command:** `npm install && npm run prisma:generate && npm run prisma:push`
+     *(uses `prisma db push` to make the DB match `schema.prisma` exactly — this project's*
+     *schema is managed by db push, so the migration files can lag behind.)*
    - **Start Command:** `npm run server:start`
    - **Instance type:** Free
    - **Health Check Path:** `/health`

@@ -20,6 +20,7 @@
     "prisma:generate": "node server/prisma/run-prisma.mjs generate --schema server/prisma/schema.prisma",
     "prisma:migrate": "node server/prisma/run-prisma.mjs migrate dev --schema server/prisma/schema.prisma",
     "prisma:deploy": "node server/prisma/run-prisma.mjs migrate deploy --schema server/prisma/schema.prisma",
+    "prisma:push": "node server/prisma/run-prisma.mjs db push --schema server/prisma/schema.prisma",
     "prisma:seed": "node server/prisma/run-prisma.mjs db seed --schema server/prisma/schema.prisma",
     "prisma:seed:test": "tsx server/prisma/seed.test.ts"
   },
