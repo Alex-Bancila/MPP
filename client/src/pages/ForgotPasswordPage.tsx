@@ -39,7 +39,7 @@ export const ForgotPasswordPage = () => {
     event.preventDefault()
     setResetError(null)
     if (!token.trim()) {
-      setResetError('Paste the token from the server console.')
+      setResetError('Paste the token from your email.')
       return
     }
     if (password.length < 8) {
@@ -71,8 +71,8 @@ export const ForgotPasswordPage = () => {
           </h1>
           <p className="mc-auth-panel__subtitle">
             {tokenSent
-              ? 'Token sent. Check the server console, then enter it below.'
-              : 'Enter your email and we will generate a reset token.'}
+              ? 'Check your email for the reset link or token, then enter it below.'
+              : 'Enter your email and we will send you a reset link.'}
           </p>
         </header>
 
@@ -98,7 +98,7 @@ export const ForgotPasswordPage = () => {
           <form className="mc-auth-panel__form" onSubmit={handleReset} noValidate>
             <Input
               label="Reset Token"
-              placeholder="Paste the token from the server console"
+              placeholder="Paste the token from your email"
               name="token"
               value={token}
               onChange={(event) => setToken(event.target.value)}

@@ -309,6 +309,18 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
     const token = deps.tokens.createOneTimeToken('reset', user.id, RESET_TOKEN_TTL_MS)
     console.log(`[Auth] Password reset token for ${user.email}: ${token.token}`)
 
+    const resetUrl = `${APP_URL}/reset-password?token=${token.token}`
+    await deps.mailer.sendEmail({
+      to: user.email,
+      subject: 'Reset your Music Core password',
+      body:
+        `Hi ${user.username},\n\n` +
+        `We received a request to reset your Music Core password.\n\n` +
+        `Open this link to choose a new password (valid for 15 minutes):\n${resetUrl}\n\n` +
+        `Or paste this token on the reset page:\n${token.token}\n\n` +
+        `If you didn't request this, you can safely ignore this email.`,
+    })
+
     await deps.auditService.recordAction({
       userId: user.id,
       role: user.role ?? 'user',
@@ -356,6 +368,17 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
 
     const token = deps.tokens.createOneTimeToken('magic', user.id, MAGIC_TOKEN_TTL_MS)
     console.log(`[Auth] Magic login token for ${user.email}: ${token.token}`)
+
+    const magicUrl = `${APP_URL}/login?magic=${token.token}`
+    await deps.mailer.sendEmail({
+      to: user.email,
+      subject: 'Your Music Core magic login link',
+      body:
+        `Hi ${user.username},\n\n` +
+        `Click to sign in to Music Core (valid for 10 minutes):\n${magicUrl}\n\n` +
+        `Or paste this token on the login page's "Magic link" tab:\n${token.token}\n\n` +
+        `If you didn't request this, you can safely ignore this email.`,
+    })
 
     await deps.auditService.recordAction({
       userId: user.id,

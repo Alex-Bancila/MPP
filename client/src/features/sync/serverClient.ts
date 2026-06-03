@@ -153,7 +153,12 @@ export const getWebSocketUrl = (): string => {
     return url
   }
 
-  const url = httpBaseToWebSocketUrl(window.location.origin)
+  // Production: the static frontend and the API usually live on different domains,
+  // so derive the socket URL from the configured API base (the backend), falling back
+  // to the page origin only when no API base is set (same-origin deployment).
+  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim()
+  const base = apiBase || window.location.origin
+  const url = httpBaseToWebSocketUrl(base)
   const token = getAuthToken()
   if (token) {
     return `${url}?token=${encodeURIComponent(token)}`

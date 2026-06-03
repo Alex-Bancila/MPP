@@ -1,0 +1,62 @@
+# Render Blueprint for Music Core (optional one-click setup).
+# In Render: New → Blueprint → connect this repo. It creates both services below.
+# DATABASE_URL, MONGODB_URI, SMTP_*, GitHub, APP_URL and VITE_API_BASE_URL are marked
+# `sync: false`, so you fill them in the dashboard (the cross-service URLs only exist
+# after the first deploy — set them, then trigger a redeploy of each service).
+#
+# Prefer the step-by-step manual setup? See DEPLOYMENT.md.
+
+services:
+  # ── Backend: Fastify API + WebSocket ──────────────────────────────────────
+  - type: web
+    name: music-core-api
+    runtime: node
+    rootDir: client
+    plan: free
+    buildCommand: npm install && npm run prisma:generate && npm run prisma:deploy
+    startCommand: npm run server:start
+    healthCheckPath: /health
+    envVars:
+      - key: HOST
+        value: "0.0.0.0"
+      - key: USE_HTTPS
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true        # Render generates a strong random secret
+      - key: SMTP_PORT
+        value: "587"
+      - key: DATABASE_URL
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: APP_URL                # = the frontend URL (fill after first deploy)
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_CALLBACK_URL    # = <this backend URL>/auth/github/callback
+        sync: false
+
+  # ── Frontend: static React (Vite) build ───────────────────────────────────
+  - type: web
+    name: music-core
+    runtime: static
+    rootDir: client
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite              # SPA: every path serves index.html
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL      # = the backend URL (fill after first deploy, then rebuild)
+        sync: false

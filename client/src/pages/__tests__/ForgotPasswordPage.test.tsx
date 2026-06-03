@@ -32,7 +32,7 @@ describe('ForgotPasswordPage', () => {
     expect(screen.getByText('MUSIC CORE')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Forgot your password?' })).toBeInTheDocument()
     expect(
-      screen.getByText('Enter your email and we will generate a reset token.'),
+      screen.getByText('Enter your email and we will send you a reset link.'),
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Send reset token' })).toBeInTheDocument()

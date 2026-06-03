@@ -1,8 +1,9 @@
 import { type FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 
 import { loginSchema } from '@/features/auth/authSchema'
 import { useAuth } from '@/features/auth/useAuth'
+import { API_BASE_URL } from '@/features/sync/serverClient'
 import { Button } from '@/shared/components/ui/Button'
 import { Input } from '@/shared/components/ui/Input'
 
@@ -30,6 +31,7 @@ const LockIcon = () => {
 
 export const LoginPage = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { currentUser, login, verifyTwoFactor, loginWithMagic, requestMagic } = useAuth()
 
   const [email, setEmail] = useState('')
@@ -48,6 +50,24 @@ export const LoginPage = () => {
       navigate('/listings', { replace: true })
     }
   }, [currentUser, navigate])
+
+  // A magic-link email points at /login?magic=<token>. Pick it up, switch to the
+  // magic tab, and complete the login automatically.
+  useEffect(() => {
+    const tokenFromUrl = searchParams.get('magic')?.trim()
+    if (!tokenFromUrl) return
+    setActiveTab('magic')
+    setMagicToken(tokenFromUrl)
+    void (async () => {
+      const result = await loginWithMagic(tokenFromUrl)
+      if (result.ok) {
+        navigate('/listings', { replace: true })
+      } else {
+        setMagicMessage(result.message ?? 'Magic link is invalid or expired.')
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -124,14 +144,14 @@ export const LoginPage = () => {
       setMagicMessage(result.message ?? 'Unable to request magic link.')
       return
     }
-    setMagicMessage('Magic link sent. Check the server console for the token.')
+    setMagicMessage('Magic link sent. Check your email for the link or token.')
   }
 
   const handleMagicVerify = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setMagicMessage('')
     if (!magicToken.trim()) {
-      setMagicMessage('Paste the magic token from the console.')
+      setMagicMessage('Paste the magic token from your email.')
       return
     }
     const result = await loginWithMagic(magicToken.trim())
@@ -296,7 +316,8 @@ export const LoginPage = () => {
             fullWidth
             variant="secondary"
             onClick={() => {
-              window.location.href = '/auth/github'
+              // Must hit the backend, which may live on a different domain in production.
+              window.location.href = new URL('/auth/github', API_BASE_URL).toString()
             }}
           >
             Continue with GitHub
