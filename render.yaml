@@ -13,7 +13,10 @@ services:
     runtime: node
     rootDir: client
     plan: free
-    buildCommand: npm install && npm run prisma:generate && npm run prisma:deploy
+    # db push (not migrate deploy): this project manages schema via `prisma db push`,
+    # so the migration files can lag behind schema.prisma. db push makes Neon match the
+    # schema exactly (adds missing columns like User.banned).
+    buildCommand: npm install && npm run prisma:generate && npm run prisma:push
     startCommand: npm run server:start
     healthCheckPath: /health
     envVars:
