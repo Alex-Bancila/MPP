@@ -506,7 +506,11 @@ p {
 
 .mc-stats-layout--gold .mc-stats-page__charts {
   display: grid;
-  gap: var(--mc-space-8);
+  /* The charts sit in the narrow right column of the dashboard, so stack them
+     vertically (pie above bar) instead of cramming two side-by-side. */
+  grid-template-columns: 1fr;
+  gap: var(--mc-space-12);
+  align-content: start;
 }
 
 .mc-generator-panel .mc-form__actions {
@@ -1996,6 +2000,9 @@ p {
   border-radius: var(--mc-radius);
   padding: var(--mc-space-6);
   margin-bottom: var(--mc-space-6);
+  /* Wide tables (audit log, suspicious users) scroll inside the card instead of
+     overflowing the page on small screens. */
+  overflow-x: auto;
 }
 
 .mc-admin-card__title {
@@ -2042,6 +2049,9 @@ p {
 @media (max-width: 768px) {
   .mc-admin-table {
     font-size: var(--mc-font-xs);
+    /* Keep columns legible and let the card scroll horizontally instead of
+       crushing everything together. */
+    min-width: 560px;
   }
 
   .mc-admin-table th,
