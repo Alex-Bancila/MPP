@@ -61,16 +61,22 @@ and no personal server is involved.
    `mongodb+srv://user:pass@cluster0.xxxx.mongodb.net/musiccore?retryWrites=true&w=majority`
 5. Keep it — this is your **`MONGODB_URI`**.
 
-## 3. Email — Brevo (SMTP)
+## 3. Email — Brevo (HTTP API)
 
-1. Brevo → sign up → **SMTP & API** → **SMTP** tab.
-2. Note **SMTP server** (`smtp-relay.brevo.com`), **Port** (`587`), **Login** (your email), and **generate an SMTP key** (the password).
-3. Under **Senders**, add and verify a sender email (Brevo emails you a confirmation link). Use that as `MAIL_FROM`.
+> **Important:** Render (and most cloud hosts) **block outbound SMTP ports** (25/465/587),
+> so SMTP times out with `ETIMEDOUT`. Use Brevo's **HTTP API** instead — it sends over
+> HTTPS (443), which is never blocked. The app prefers the API automatically when
+> `BREVO_API_KEY` is set.
 
-   These become: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
+1. Brevo → sign up → **SMTP & API** → **API Keys** tab → **Generate a new API key** → copy it.
+   This becomes **`BREVO_API_KEY`**.
+2. **Senders, Domains & Dedicated IPs → Senders** → add and verify a sender email (Brevo
+   emails you a confirmation link). Use that as **`MAIL_FROM`** (e.g. `Music Core <you@gmail.com>`).
 
-> Using **Gmail** instead? `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER=you@gmail.com`,
-> `SMTP_PASS=`*16-char App Password* (Google Account → Security → 2-Step Verification → App passwords).
+   So in production you only need two email vars: `BREVO_API_KEY` and `MAIL_FROM`.
+
+> Local dev only: instead of the API you can use SMTP — set `SMTP_HOST=smtp-relay.brevo.com`,
+> `SMTP_PORT=587`, `SMTP_USER`, `SMTP_PASS`. SMTP is used only when `BREVO_API_KEY` is empty.
 
 ## 4. Backend — Render Web Service
 
@@ -93,7 +99,8 @@ and no personal server is involved.
    | `JWT_SECRET` | a long random string (e.g. run `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`) |
    | `DATABASE_URL` | *(from step 1)* |
    | `MONGODB_URI` | *(from step 2)* |
-   | `SMTP_HOST` `SMTP_PORT` `SMTP_USER` `SMTP_PASS` `MAIL_FROM` | *(from step 3)* |
+   | `BREVO_API_KEY` | *(from step 3 — Brevo API key)* |
+   | `MAIL_FROM` | e.g. `Music Core <you@gmail.com>` (verified Brevo sender) |
    | `APP_URL` | leave blank for now — set in step 6 |
    | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_CALLBACK_URL` | optional, set in step 7 |
 
