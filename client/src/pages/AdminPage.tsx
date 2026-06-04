@@ -253,8 +253,8 @@ export const AdminPage = () => {
             flex: '1 1 140px',
             padding: '16px 20px',
             borderRadius: '12px',
-            background: 'var(--mc-surface, #1a1a2e)',
-            border: '1px solid var(--mc-border, #2a2a3e)',
+            background: 'var(--mc-bg-secondary)',
+            border: '1px solid var(--mc-border-default)',
           }}>
             <div style={{ fontSize: '1.8rem', fontWeight: 700 }}>{stat.value}</div>
             <div style={{ fontSize: '0.8rem', opacity: 0.6, marginTop: '4px' }}>{stat.label}</div>
@@ -263,7 +263,7 @@ export const AdminPage = () => {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid var(--mc-border, #2a2a3e)' }}>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', borderBottom: '1px solid var(--mc-border-default)' }}>
         {(['logs', 'suspicious', 'requests', 'roles'] as Tab[]).map(t => {
           const pendingRequests = requests.filter(r => r.status === 'pending').length
           const label =
@@ -281,8 +281,8 @@ export const AdminPage = () => {
               background: 'none',
               cursor: 'pointer',
               fontWeight: tab === t ? 700 : 400,
-              borderBottom: tab === t ? '2px solid var(--mc-accent, #7c3aed)' : '2px solid transparent',
-              color: tab === t ? 'var(--mc-accent, #7c3aed)' : 'inherit',
+              borderBottom: tab === t ? '2px solid var(--mc-accent-red)' : '2px solid transparent',
+              color: tab === t ? 'var(--mc-accent-red)' : 'inherit',
               fontSize: '0.9rem',
               textTransform: 'capitalize',
               transition: 'all 0.15s',
@@ -299,8 +299,8 @@ export const AdminPage = () => {
           marginBottom: '16px',
           padding: '10px 16px',
           borderRadius: '8px',
-          background: 'var(--mc-surface, #1a1a2e)',
-          border: '1px solid var(--mc-accent, #7c3aed)',
+          background: 'var(--mc-bg-secondary)',
+          border: '1px solid var(--mc-accent-red)',
           fontSize: '0.85rem',
         }}>
           {actionMessage}
@@ -312,7 +312,7 @@ export const AdminPage = () => {
           marginBottom: '16px',
           padding: '10px 16px',
           borderRadius: '8px',
-          background: 'var(--mc-surface, #1a1a2e)',
+          background: 'var(--mc-bg-secondary)',
           border: '1px solid #f97316',
           color: '#f97316',
           fontSize: '0.85rem',
@@ -335,7 +335,7 @@ export const AdminPage = () => {
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid var(--mc-border, #2a2a3e)', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '1px solid var(--mc-border-default)', textAlign: 'left' }}>
                       {['Timestamp', 'User', 'Role', 'Action', 'Details'].map(h => (
                         <th key={h} style={{ padding: '10px 12px', fontWeight: 600, opacity: 0.7, whiteSpace: 'nowrap' }}>{h}</th>
                       ))}
@@ -343,12 +343,12 @@ export const AdminPage = () => {
                   </thead>
                   <tbody>
                     {logs.map(log => (
-                      <tr key={log.id} style={{ borderBottom: '1px solid var(--mc-border, #2a2a3e)' }}>
+                      <tr key={log.id} style={{ borderBottom: '1px solid var(--mc-border-default)' }}>
                         <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', opacity: 0.6, fontSize: '0.8rem' }}>{formatDate(log.createdAt)}</td>
                         <td style={{ padding: '10px 12px', fontWeight: 600 }}>{log.username}</td>
                         <td style={{ padding: '10px 12px' }}><RoleBadge role={log.role} /></td>
                         <td style={{ padding: '10px 12px' }}>
-                          <code style={{ fontSize: '0.8rem', background: 'var(--mc-surface, #1a1a2e)', padding: '2px 6px', borderRadius: '4px' }}>
+                          <code style={{ fontSize: '0.8rem', background: 'var(--mc-bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>
                             {log.action}
                           </code>
                         </td>
@@ -375,8 +375,8 @@ export const AdminPage = () => {
                   marginBottom: '20px',
                   padding: '16px 20px',
                   borderRadius: '12px',
-                  background: 'var(--mc-surface, #1a1a2e)',
-                  border: '1px solid var(--mc-border, #2a2a3e)',
+                  background: 'var(--mc-bg-secondary)',
+                  border: '1px solid var(--mc-border-default)',
                 }}
               >
                 <label style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1 1 220px', fontSize: '0.8rem', opacity: 0.8 }}>
@@ -416,7 +416,7 @@ export const AdminPage = () => {
                     <div key={user.id} style={{
                       padding: '16px 20px',
                       borderRadius: '12px',
-                      background: 'var(--mc-surface, #1a1a2e)',
+                      background: 'var(--mc-bg-secondary)',
                       border: `1px solid ${user.score >= 10 ? '#ef4444' : user.score >= 5 ? '#f97316' : '#eab308'}`,
                       display: 'flex',
                       alignItems: 'center',
@@ -471,8 +471,8 @@ export const AdminPage = () => {
                     <div key={request.id} style={{
                       padding: '16px 20px',
                       borderRadius: '12px',
-                      background: 'var(--mc-surface, #1a1a2e)',
-                      border: '1px solid var(--mc-border, #2a2a3e)',
+                      background: 'var(--mc-bg-secondary)',
+                      border: '1px solid var(--mc-border-default)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '16px',
@@ -515,8 +515,8 @@ export const AdminPage = () => {
                   <div key={role.id} style={{
                     padding: '16px 20px',
                     borderRadius: '12px',
-                    background: 'var(--mc-surface, #1a1a2e)',
-                    border: '1px solid var(--mc-border, #2a2a3e)',
+                    background: 'var(--mc-bg-secondary)',
+                    border: '1px solid var(--mc-border-default)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                       <span style={{ fontWeight: 700, fontSize: '1rem' }}>{role.name}</span>
@@ -531,7 +531,7 @@ export const AdminPage = () => {
                           fontSize: '0.75rem',
                           padding: '2px 8px',
                           borderRadius: '4px',
-                          background: 'var(--mc-border, #2a2a3e)',
+                          background: 'var(--mc-border-default)',
                           fontFamily: 'monospace',
                         }}>
                           {p}

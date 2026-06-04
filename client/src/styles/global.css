@@ -498,6 +498,29 @@ p {
   text-align: center;
 }
 
+.mc-error-boundary {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--mc-space-8);
+  padding: var(--mc-space-24);
+  text-align: center;
+  background: var(--mc-bg-primary);
+  color: var(--mc-text-primary);
+}
+
+.mc-error-boundary__title {
+  font-size: var(--mc-font-h2-size);
+  font-weight: 700;
+}
+
+.mc-error-boundary__message {
+  color: var(--mc-text-secondary);
+  max-width: 480px;
+}
+
 .mc-listings-page {
   gap: var(--mc-space-12);
 }
