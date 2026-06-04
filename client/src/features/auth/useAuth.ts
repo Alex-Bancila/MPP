@@ -78,6 +78,9 @@ export const useAuth = () => {
         clearTimeout(inactivityTimer.current)
       }
     }
+    // `logout` is re-created each render; depending on it would reset the inactivity
+    // timer on every render. Re-running only when the logged-in user changes is intended.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser])
 
   const loginLocal = (values: LoginFormValues): { ok: boolean; message?: string } => {

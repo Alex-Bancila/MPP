@@ -1005,7 +1005,10 @@ const requestAdminJson = async <T>(
     })
 
   let response = await send()
-  if (response.status === 401) {
+  // 401 = expired token; 403 = token's permissions are stale (e.g. the user was just
+  // promoted to admin). Both are fixable by refreshing, which re-reads the user's current
+  // role/permissions from the server, then retrying once.
+  if (response.status === 401 || response.status === 403) {
     const refreshed = await refreshServerSession()
     if (refreshed) {
       response = await send()

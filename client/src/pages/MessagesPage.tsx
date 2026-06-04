@@ -14,6 +14,10 @@ export const MessagesPage = () => {
   const { conversations, getConversationMeta } = useMessaging()
   const [selectedId, setSelectedId] = useState<string | null>(conversations[0]?.id ?? null)
 
+  // Keep the selected conversation valid as the list changes (e.g. a new conversation
+  // arrives over WebSocket, or the selected one disappears). Deriving selection from the
+  // live list is intentional here.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (conversations.length === 0) {
       setSelectedId(null)
@@ -24,6 +28,7 @@ export const MessagesPage = () => {
       setSelectedId(conversations[0].id)
     }
   }, [conversations, selectedId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (!currentUser || !selectedId) {

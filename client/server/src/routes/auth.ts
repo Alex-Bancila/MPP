@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 import type { AuthService } from '../services/authService'
 import type { MemoryStore } from '../storage/memoryStore'
@@ -24,7 +24,7 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
   const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID
   const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET
   const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL ?? `${APP_URL}/auth/callback`
-  const issueTokens = (user: { id: string; username: string; role?: string; permissions?: string[] }, request: any) => {
+  const issueTokens = (user: { id: string; username: string; role?: string; permissions?: string[] }, request: FastifyRequest) => {
     const accessToken = app.jwt.sign({
       sub: user.id,
       username: user.username,
@@ -46,8 +46,8 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
   // Shared by password login, 2FA verification, and magic-link login.
   const finalizeLogin = (
     user: { id: string; username: string; email: string; passwordHash: string; avatarUrl: string; createdAt: string; role?: 'admin' | 'user'; permissions?: string[] },
-    request: any,
-    reply: any,
+    request: FastifyRequest,
+    reply: FastifyReply,
     audit: { action: string; details: string },
   ) => {
     addUserToStore(deps.store, user)
@@ -97,7 +97,8 @@ export const registerAuthRoutes = (app: FastifyInstance, deps: RegisterAuthRoute
       }
 
       // Admin accounts require a second factor: an emailed pass key.
-      if (user.role === 'admin') {
+      // Set ADMIN_2FA=off to disable (e.g. while email delivery isn't configured yet).
+      if (user.role === 'admin' && process.env.ADMIN_2FA !== 'off') {
         const { challengeId, code } = deps.tokens.createTwoFactorChallenge(user.id, TWO_FACTOR_TTL_MS)
         await deps.mailer.sendEmail({
           to: user.email,

@@ -1124,7 +1124,15 @@ export const registerGraphQLRoutes = (app: FastifyInstance, deps: GraphQLRouteDe
     })
 
     if (result.errors?.length) {
-      reply.code(400).send({ errors: result.errors.map((error) => error.message) })
+      const messages = result.errors.map((error) => error.message)
+      // Map auth failures to their proper HTTP status so the client's silent
+      // token-refresh (which only triggers on 401) works for GraphQL too.
+      const status = messages.includes('Unauthorized')
+        ? 401
+        : messages.includes('Forbidden')
+          ? 403
+          : 400
+      reply.code(status).send({ errors: messages })
       return
     }
 

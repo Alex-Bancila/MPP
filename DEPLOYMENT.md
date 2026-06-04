@@ -101,6 +101,7 @@ and no personal server is involved.
    | `MONGODB_URI` | *(from step 2)* |
    | `BREVO_API_KEY` | *(from step 3 — Brevo API key)* |
    | `MAIL_FROM` | e.g. `Music Core <you@gmail.com>` (verified Brevo sender) |
+   | `ADMIN_2FA` | `off` to let admins log in with just a password (set `on`/unset once email works) |
    | `APP_URL` | leave blank for now — set in step 6 |
    | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` / `GITHUB_CALLBACK_URL` | optional, set in step 7 |
 

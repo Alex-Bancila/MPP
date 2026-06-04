@@ -22,14 +22,20 @@ const resolveHealthUrl = (): string => {
   return 'http://localhost:3001/health'
 }
 
-export const fetchServerHealthRest = async (): Promise<HealthStatus> => {
+interface HealthProbe extends HealthStatus {
+  /** True when the request never reached the server (offline, CORS, or blocked by an
+   *  ad-blocker such as Brave Shields) — as opposed to the server replying "unhealthy". */
+  blocked: boolean
+}
+
+const probeServerHealth = async (): Promise<HealthProbe> => {
   try {
     const response = await fetch(resolveHealthUrl(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
     })
     if (!response.ok) {
-      return { ok: false, postgres: false, mongo: false }
+      return { ok: false, postgres: false, mongo: false, blocked: false }
     }
 
     const data = (await response.json()) as {
@@ -42,10 +48,16 @@ export const fetchServerHealthRest = async (): Promise<HealthStatus> => {
       ok: Boolean(data.ok),
       postgres: Boolean(data.postgres),
       mongo: Boolean(data.mongo),
+      blocked: false,
     }
   } catch {
-    return { ok: false, postgres: false, mongo: false }
+    return { ok: false, postgres: false, mongo: false, blocked: true }
   }
+}
+
+export const fetchServerHealthRest = async (): Promise<HealthStatus> => {
+  const { ok, postgres, mongo } = await probeServerHealth()
+  return { ok, postgres, mongo }
 }
 
 export interface WaitForServerHealthOptions {
@@ -60,8 +72,15 @@ export const waitForServerHealth = async (
   const intervalMs = options.intervalMs ?? 500
 
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    const health = await fetchServerHealthRest()
+    const health = await probeServerHealth()
     if (health.postgres) {
+      return true
+    }
+
+    // If the probe was blocked (ad-blocker/CORS) rather than answered as unhealthy,
+    // don't wedge in offline mode — proceed and let the real GraphQL requests, which
+    // aren't blocked, decide connectivity.
+    if (health.blocked) {
       return true
     }
 

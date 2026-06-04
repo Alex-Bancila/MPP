@@ -48,7 +48,7 @@ export const createServerHub = (): ServerHub => {
       listeners.forEach((listener) => {
         try {
           listener(payload)
-        } catch (err) {
+        } catch {
           // If a listener throws, remove it to avoid repeated errors.
           listeners.delete(listener)
         }

@@ -61,8 +61,10 @@ export const buildApp = async (options?: { https?: boolean }): Promise<BuildAppR
 
   await app.register(helmet, { contentSecurityPolicy: false })
 
+  // In production restrict to the deployed frontend (APP_URL); in dev (no APP_URL,
+  // or the Vite proxy makes calls same-origin) stay permissive.
   await app.register(cors, {
-    origin: true,
+    origin: process.env.APP_URL ? [process.env.APP_URL] : true,
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   })

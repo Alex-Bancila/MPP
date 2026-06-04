@@ -492,6 +492,12 @@ p {
   gap: var(--mc-space-16);
 }
 
+.mc-page__loading {
+  padding: var(--mc-space-16);
+  color: var(--mc-text-secondary);
+  text-align: center;
+}
+
 .mc-listings-page {
   gap: var(--mc-space-12);
 }

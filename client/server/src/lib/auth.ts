@@ -53,7 +53,13 @@ export const requireAuthPayload = async (request: FastifyRequest): Promise<AuthP
   if (token && !request.headers.authorization) {
     request.headers.authorization = `Bearer ${token}`
   }
-  await request.jwtVerify()
+  try {
+    await request.jwtVerify()
+  } catch {
+    // Stable message so the GraphQL route can map this to HTTP 401 (the client
+    // silently refreshes the access token and retries on 401, but not on 400).
+    throw new Error('Unauthorized')
+  }
   return request.user as AuthPayload
 }
 

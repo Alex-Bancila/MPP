@@ -20,7 +20,7 @@ export const registerWebsocketRoutes = (app: FastifyInstance, deps: WebsocketRou
       reply.code(426).send({ error: 'WebSocket upgrade required' })
     },
     wsHandler: async (socket, request) => {
-      const queryToken = (request.query as any)?.token as string | undefined
+      const queryToken = (request.query as { token?: string } | undefined)?.token
       if (queryToken) {
         request.headers.authorization = `Bearer ${queryToken}`
       }
@@ -32,20 +32,20 @@ export const registerWebsocketRoutes = (app: FastifyInstance, deps: WebsocketRou
         auth = null
       }
       if (!auth) {
-        try { socket.close() } catch {}
+        try { socket.close() } catch { /* already closed */ }
         return
       }
 
       const unsubscribe = deps.hub.addListener((payload) => {
         try {
           // Only send when socket is open; guard against throws from send().
-          if ((socket as any).readyState === 1) {
+          if ((socket as { readyState?: number }).readyState === 1) {
             socket.send(JSON.stringify(payload))
           }
-        } catch (err) {
+        } catch {
           // If sending fails, clean up this listener and close the socket.
-          try { unsubscribe() } catch {}
-          try { socket.close() } catch {}
+          try { unsubscribe() } catch { /* already removed */ }
+          try { socket.close() } catch { /* already closed */ }
         }
       })
 

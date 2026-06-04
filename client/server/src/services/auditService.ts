@@ -2,8 +2,8 @@ import type { UserRoleName, ActionLog, SuspiciousUser } from '../shared'
 import { createId } from '../shared'
 import type { MemoryStore } from '../storage/memoryStore'
 
-export interface ActionLogRow extends ActionLog {}
-export interface SuspiciousUserRow extends SuspiciousUser {}
+export type ActionLogRow = ActionLog
+export type SuspiciousUserRow = SuspiciousUser
 
 export interface AuditDashboard {
   logs: ActionLogRow[]

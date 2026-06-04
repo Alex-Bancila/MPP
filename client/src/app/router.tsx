@@ -1,118 +1,91 @@
+/* eslint-disable react-refresh/only-export-components -- this is the route table, not a
+   component module; the lazy() page bindings here aren't Fast-Refresh boundaries. */
+import { lazy, Suspense, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router-dom'
 
-import { FavouritesPage } from '@/pages/FavouritesPage'
-import { ForgotPasswordPage } from '@/pages/ForgotPasswordPage'
-import { ResetPasswordPage } from '@/pages/ResetPasswordPage'
-import { AuthCallbackPage } from '@/pages/AuthCallbackPage'
-import { LandingPage } from '@/pages/LandingPage'
-import { ListingDetailPage } from '@/pages/ListingDetailPage'
-import { ListingFormPage } from '@/pages/ListingFormPage'
-import { ListingsPage } from '@/pages/ListingsPage'
-import { LoginPage } from '@/pages/LoginPage'
-import { MessagesPage } from '@/pages/MessagesPage'
-import { NotFoundPage } from '@/pages/NotFoundPage'
-import { ProfilePage } from '@/pages/ProfilePage'
-import { RegisterPage } from '@/pages/RegisterPage'
-import { StatsPage } from '@/pages/StatsPage'
 import { AppLayout } from '@/shared/components/layout/AppLayout'
 import { AuthLayout } from '@/shared/components/layout/AuthLayout'
 import { LandingLayout } from '@/shared/components/layout/LandingLayout'
-import { AdminPage } from '@/pages/AdminPage'
 import { ProtectedRoute } from '@/shared/components/routing/ProtectedRoute'
 import { AdminRoute } from '@/shared/components/routing/AdminRoute'
+
+// Pages are lazy-loaded so each route ships as its own chunk instead of one large bundle.
+const FavouritesPage = lazy(() => import('@/pages/FavouritesPage').then((m) => ({ default: m.FavouritesPage })))
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })))
+const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })))
+const AuthCallbackPage = lazy(() => import('@/pages/AuthCallbackPage').then((m) => ({ default: m.AuthCallbackPage })))
+const LandingPage = lazy(() => import('@/pages/LandingPage').then((m) => ({ default: m.LandingPage })))
+const ListingDetailPage = lazy(() => import('@/pages/ListingDetailPage').then((m) => ({ default: m.ListingDetailPage })))
+const ListingFormPage = lazy(() => import('@/pages/ListingFormPage').then((m) => ({ default: m.ListingFormPage })))
+const ListingsPage = lazy(() => import('@/pages/ListingsPage').then((m) => ({ default: m.ListingsPage })))
+const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })))
+const MessagesPage = lazy(() => import('@/pages/MessagesPage').then((m) => ({ default: m.MessagesPage })))
+const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })))
+const ProfilePage = lazy(() => import('@/pages/ProfilePage').then((m) => ({ default: m.ProfilePage })))
+const RegisterPage = lazy(() => import('@/pages/RegisterPage').then((m) => ({ default: m.RegisterPage })))
+const StatsPage = lazy(() => import('@/pages/StatsPage').then((m) => ({ default: m.StatsPage })))
+const AdminPage = lazy(() => import('@/pages/AdminPage').then((m) => ({ default: m.AdminPage })))
+
+const PageFallback = () => <div className="mc-page__loading">Loading…</div>
+
+// Wrap a lazy page so the surrounding layout (navbar) renders immediately while the
+// page chunk loads.
+const suspend = (node: ReactNode) => <Suspense fallback={<PageFallback />}>{node}</Suspense>
 
 export const appRouter = createBrowserRouter([
   {
     path: '/',
-    element: (
-      <LandingLayout>
-        <LandingPage />
-      </LandingLayout>
-    ),
+    element: <LandingLayout>{suspend(<LandingPage />)}</LandingLayout>,
   },
   {
     path: '/login',
-    element: (
-      <AuthLayout showNavigation>
-        <LoginPage />
-      </AuthLayout>
-    ),
+    element: <AuthLayout showNavigation>{suspend(<LoginPage />)}</AuthLayout>,
   },
   {
     path: '/admin',
     element: (
       <AdminRoute>
-        <AppLayout>
-          <AdminPage />
-        </AppLayout>
+        <AppLayout>{suspend(<AdminPage />)}</AppLayout>
       </AdminRoute>
     ),
   },
   {
     path: '/forgot-password',
-    element: (
-      <AuthLayout>
-        <ForgotPasswordPage />
-      </AuthLayout>
-    ),
+    element: <AuthLayout>{suspend(<ForgotPasswordPage />)}</AuthLayout>,
   },
   {
     path: '/reset-password',
-    element: (
-      <AuthLayout>
-        <ResetPasswordPage />
-      </AuthLayout>
-    ),
+    element: <AuthLayout>{suspend(<ResetPasswordPage />)}</AuthLayout>,
   },
   {
     path: '/auth/callback',
-    element: (
-      <AuthLayout>
-        <AuthCallbackPage />
-      </AuthLayout>
-    ),
+    element: <AuthLayout>{suspend(<AuthCallbackPage />)}</AuthLayout>,
   },
   {
     path: '/register',
-    element: (
-      <AuthLayout showNavigation>
-        <RegisterPage />
-      </AuthLayout>
-    ),
+    element: <AuthLayout showNavigation>{suspend(<RegisterPage />)}</AuthLayout>,
   },
   {
     path: '/listings',
-    element: (
-      <AppLayout wide>
-        <ListingsPage />
-      </AppLayout>
-    ),
+    element: <AppLayout wide>{suspend(<ListingsPage />)}</AppLayout>,
   },
   {
     path: '/listings/new',
     element: (
       <ProtectedRoute>
-        <AppLayout>
-          <ListingFormPage />
-        </AppLayout>
+        <AppLayout>{suspend(<ListingFormPage />)}</AppLayout>
       </ProtectedRoute>
     ),
   },
   {
     path: '/listings/:listingId',
-    element: (
-      <AppLayout>
-        <ListingDetailPage />
-      </AppLayout>
-    ),
+    element: <AppLayout>{suspend(<ListingDetailPage />)}</AppLayout>,
   },
   {
     path: '/listings/:listingId/edit',
     element: (
       <ProtectedRoute>
-        <AppLayout>
-          <ListingFormPage />
-        </AppLayout>
+        <AppLayout>{suspend(<ListingFormPage />)}</AppLayout>
       </ProtectedRoute>
     ),
   },
@@ -120,9 +93,7 @@ export const appRouter = createBrowserRouter([
     path: '/favourites',
     element: (
       <ProtectedRoute>
-        <AppLayout>
-          <FavouritesPage />
-        </AppLayout>
+        <AppLayout>{suspend(<FavouritesPage />)}</AppLayout>
       </ProtectedRoute>
     ),
   },
@@ -130,34 +101,20 @@ export const appRouter = createBrowserRouter([
     path: '/messages',
     element: (
       <ProtectedRoute>
-        <AppLayout>
-          <MessagesPage />
-        </AppLayout>
+        <AppLayout>{suspend(<MessagesPage />)}</AppLayout>
       </ProtectedRoute>
     ),
   },
   {
     path: '/profile/:username',
-    element: (
-      <AppLayout>
-        <ProfilePage />
-      </AppLayout>
-    ),
+    element: <AppLayout>{suspend(<ProfilePage />)}</AppLayout>,
   },
   {
     path: '/stats',
-    element: (
-      <AppLayout>
-        <StatsPage />
-      </AppLayout>
-    ),
+    element: <AppLayout>{suspend(<StatsPage />)}</AppLayout>,
   },
   {
     path: '*',
-    element: (
-      <AppLayout>
-        <NotFoundPage />
-      </AppLayout>
-    ),
+    element: <AppLayout>{suspend(<NotFoundPage />)}</AppLayout>,
   },
 ])
