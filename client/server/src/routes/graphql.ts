@@ -11,6 +11,7 @@ import {
   GraphQLString,
   graphql,
 } from 'graphql'
+import { ZodError } from 'zod'
 
 import {
   ALL_CATEGORIES_FILTER,
@@ -82,7 +83,14 @@ export interface GraphQLRouteDeps {
 const parseWithSchema = <T>(schema: { parse: (input: unknown) => T }, input: unknown): T => {
   try {
     return schema.parse(input)
-  } catch {
+  } catch (error) {
+    if (error instanceof ZodError) {
+      // Surface the offending field(s) so a 400 is diagnosable instead of opaque.
+      const detail = error.issues
+        .map((issue) => `${issue.path.join('.') || 'value'}: ${issue.message}`)
+        .join('; ')
+      throw new Error(`Validation failed — ${detail}`)
+    }
     throw new Error('Validation failed')
   }
 }
