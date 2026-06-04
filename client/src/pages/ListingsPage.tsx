@@ -91,10 +91,26 @@ export const ListingsPage = () => {
   const serverPreferred =
     sync.serverReachable && window.navigator.onLine && sync.queuedMutations === 0
   const totalPages = serverPreferred ? serverTotalPages : localTotalPages
-  const items =
-    serverPreferred && serverItems.length > 0
-      ? serverItems
-      : localRows.slice(0, page * PAGE_SIZE)
+  const items = useMemo(() => {
+    if (serverPreferred && serverItems.length > 0) {
+      // The server page is a point-in-time snapshot. Listings created since it was
+      // fetched (our own optimistic add, or others' via WebSocket) live in the store
+      // with a newer datePosted — surface those at the top so new items appear live
+      // without a manual refresh, while keeping pagination intact.
+      const serverIds = new Set(serverItems.map((listing) => listing.id))
+      const newestServerDate = serverItems.reduce(
+        (max, listing) => Math.max(max, new Date(listing.datePosted).getTime()),
+        0,
+      )
+      const freshlyAdded = localRows.filter(
+        (listing) =>
+          !serverIds.has(listing.id) &&
+          new Date(listing.datePosted).getTime() > newestServerDate,
+      )
+      return [...freshlyAdded, ...serverItems]
+    }
+    return localRows.slice(0, page * PAGE_SIZE)
+  }, [serverPreferred, serverItems, localRows, page])
   const hasMore = page < totalPages
 
   const loadPage = useCallback(

@@ -6,6 +6,7 @@ import { getCurrentUser, isListingFavouriteForUser } from '@/app/store/selectors
 import { clearActivityCookies } from '@/features/activity/cookies'
 import { ListingCard } from '@/features/listings/components/ListingCard'
 import { useProfile } from '@/features/profile/useProfile'
+import { requestAdminAccess } from '@/features/sync/serverClient'
 import { Button } from '@/shared/components/ui/Button'
 import { ALL_CATEGORIES_FILTER } from '@/shared/constants/categories'
 
@@ -16,7 +17,20 @@ export const ProfilePage = () => {
   const { user, listings } = useProfile(params.username)
   const actor = getCurrentUser(state)
   const [activityResetMessage, setActivityResetMessage] = useState('')
+  const [adminRequestMessage, setAdminRequestMessage] = useState('')
+  const [adminRequestPending, setAdminRequestPending] = useState(false)
   const hasAnySoldListings = listings.some((listing) => listing.status === 'Sold')
+
+  const isOwnProfile = Boolean(actor && user && actor.id === user.id)
+  const canRequestAdmin = isOwnProfile && actor?.role !== 'admin'
+
+  const handleRequestAdmin = async () => {
+    setAdminRequestMessage('')
+    setAdminRequestPending(true)
+    const result = await requestAdminAccess()
+    setAdminRequestPending(false)
+    setAdminRequestMessage(result.message)
+  }
 
   const resetPreferences = () => {
     if (!actor) {
@@ -70,11 +84,17 @@ export const ProfilePage = () => {
           <div>
             <h1 className="mc-page__title">{user.username}</h1>
             <p className="mc-page__subtitle">Public profile and marketplace listings from this user.</p>
-            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
               <Button variant="ghost" onClick={resetPreferences}>
                 Reset Preferences Cookie
               </Button>
+              {canRequestAdmin ? (
+                <Button variant="secondary" onClick={() => void handleRequestAdmin()} disabled={adminRequestPending}>
+                  {adminRequestPending ? 'Requesting...' : 'Request admin access'}
+                </Button>
+              ) : null}
               {activityResetMessage ? <span className="mc-page__subtitle">{activityResetMessage}</span> : null}
+              {adminRequestMessage ? <span className="mc-page__subtitle">{adminRequestMessage}</span> : null}
             </div>
           </div>
         </div>

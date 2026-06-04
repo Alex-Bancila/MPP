@@ -8,7 +8,8 @@ import type { ServerHub } from '../transport/serverHub'
 import type { TokenStore } from '../storage/tokenStore'
 import type { Mailer } from '../lib/mailer'
 import { prisma } from '../db/prisma'
-import { requirePermission } from '../lib/auth'
+import { requireAuth, requirePermission } from '../lib/auth'
+import { createId } from '../shared'
 
 export interface RegisterAdminRoutesDeps {
   authService: AuthService
@@ -21,6 +22,54 @@ export interface RegisterAdminRoutesDeps {
 }
 
 export const registerAdminRoutes = (app: FastifyInstance, deps: RegisterAdminRoutesDeps): void => {
+  // Self-service: a logged-in non-admin user requests admin access.
+  app.post('/admin/requests', async (request, reply) => {
+    const payload = await requireAuth(request, reply)
+    if (!payload) return
+
+    const user = deps.store.state.users.find((u) => u.id === payload.sub)
+    if (!user) {
+      return reply.code(404).send({ message: 'User not found.' })
+    }
+    if (user.role === 'admin') {
+      return reply.code(400).send({ message: 'You are already an administrator.' })
+    }
+
+    const existingPending = deps.store.adminRequests.find(
+      (r) => r.userId === user.id && r.status === 'pending',
+    )
+    if (existingPending) {
+      return reply.code(409).send({ message: 'You already have a pending admin request.' })
+    }
+
+    const now = new Date()
+    const adminRequest = {
+      id: createId('adminreq'),
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      status: 'pending' as const,
+      note: null,
+      createdAt: now.toISOString(),
+      resolvedAt: null,
+      resolvedById: null,
+    }
+
+    await prisma.adminAccessRequest.create({
+      data: { id: adminRequest.id, userId: user.id, status: 'pending', createdAt: now },
+    })
+    deps.store.adminRequests = [adminRequest, ...deps.store.adminRequests]
+
+    await deps.auditService.recordAction({
+      userId: user.id,
+      role: user.role ?? 'user',
+      action: 'admin/request',
+      details: `${user.username} requested admin access`,
+    })
+
+    return reply.code(201).send({ request: adminRequest })
+  })
+
   // List admin access requests (most recent first).
   app.get('/admin/requests', async (request, reply) => {
     const payload = await requirePermission(request, reply, 'admin:read')

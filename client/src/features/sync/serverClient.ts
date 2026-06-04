@@ -1019,6 +1019,34 @@ const requestAdminJson = async <T>(
   return response.json() as Promise<T>
 }
 
+// Self-service request for admin access by the current (non-admin) user.
+export const requestAdminAccess = async (): Promise<{ ok: boolean; message: string }> => {
+  try {
+    const send = () =>
+      fetchWithTimeout(buildUrl('/admin/requests'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+
+    let response = await send()
+    if (response.status === 401) {
+      const refreshed = await refreshServerSession()
+      if (refreshed) {
+        response = await send()
+      }
+    }
+
+    const data = (await response.json().catch(() => ({}))) as { message?: string }
+    if (!response.ok) {
+      return { ok: false, message: data.message ?? 'Unable to request admin access.' }
+    }
+    return { ok: true, message: 'Request sent — an administrator will review it.' }
+  } catch {
+    return { ok: false, message: 'Unable to request admin access.' }
+  }
+}
+
 export const getAdminRequests = async (): Promise<AdminAccessRequest[]> => {
   const data = await requestAdminJson<{ requests: AdminAccessRequest[] }>('/admin/requests', 'GET')
   return data.requests
