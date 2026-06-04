@@ -12,28 +12,30 @@ export const StatsTablePane = ({ rows }: StatsTablePaneProps) => {
         Category Breakdown
       </h3>
 
-      <table className="mc-listing-table">
-        <thead>
-          <tr>
-            <th>Category</th>
-            <th>Listings</th>
-            <th>Avg Price</th>
-            <th>Total Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            return (
-              <tr key={row.category}>
-                <td>{row.category}</td>
-                <td>{row.count}</td>
-                <td>{toRon(row.averagePrice)}</td>
-                <td>{toRon(row.totalValue)}</td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
+      <div className="mc-table-scroll">
+        <table className="mc-listing-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Listings</th>
+              <th>Avg Price</th>
+              <th>Total Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => {
+              return (
+                <tr key={row.category}>
+                  <td>{row.category}</td>
+                  <td>{row.count}</td>
+                  <td>{toRon(row.averagePrice)}</td>
+                  <td>{toRon(row.totalValue)}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </section>
   )
 }

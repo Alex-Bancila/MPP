@@ -1403,6 +1403,22 @@ p {
   gap: var(--mc-space-12);
 }
 
+/* Charts and tools use auto-fit grids: two columns when there's room, one when
+   narrow — no breakpoints needed, so they're responsive down to phone widths. */
+.mc-stats-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  gap: var(--mc-space-12);
+  align-items: start;
+}
+
+.mc-stats-tools {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--mc-space-12);
+  align-items: start;
+}
+
 .mc-stats-page__charts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1570,6 +1586,15 @@ p {
   padding: var(--mc-space-12);
   display: grid;
   gap: var(--mc-space-8);
+}
+
+/* Let wide tables scroll horizontally on narrow screens instead of overflowing. */
+.mc-table-scroll {
+  overflow-x: auto;
+}
+
+.mc-table-scroll .mc-listing-table {
+  min-width: 420px;
 }
 
 .mc-gear-dna {
@@ -1986,26 +2011,26 @@ p {
 .mc-admin-section {
   margin-top: var(--mc-space-12);
   padding-top: var(--mc-space-8);
-  border-top: 1px solid var(--mc-border);
+  border-top: 1px solid var(--mc-border-default);
 }
 
 .mc-admin-section__title {
   font-size: var(--mc-font-h2-size);
   font-weight: 700;
-  margin-bottom: var(--mc-space-6);
+  margin-bottom: var(--mc-space-8);
 }
 
 .mc-admin-section__loading {
-  color: var(--mc-text-muted);
+  color: var(--mc-text-secondary);
   font-style: italic;
 }
 
 .mc-admin-card {
-  background: var(--mc-surface);
-  border: 1px solid var(--mc-border);
-  border-radius: var(--mc-radius);
-  padding: var(--mc-space-6);
-  margin-bottom: var(--mc-space-6);
+  background: var(--mc-bg-secondary);
+  border: 1px solid var(--mc-border-default);
+  border-radius: var(--mc-radius-lg);
+  padding: var(--mc-space-8);
+  margin-bottom: var(--mc-space-8);
   /* Wide tables (audit log, suspicious users) scroll inside the card instead of
      overflowing the page on small screens. */
   overflow-x: auto;
@@ -2018,33 +2043,33 @@ p {
 }
 
 .mc-admin-card__empty {
-  color: var(--mc-text-muted);
+  color: var(--mc-text-secondary);
   font-style: italic;
 }
 
 .mc-admin-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--mc-font-sm);
+  font-size: var(--mc-font-body-sm);
 }
 
 .mc-admin-table thead tr {
-  border-bottom: 2px solid var(--mc-border);
+  border-bottom: 2px solid var(--mc-border-default);
 }
 
 .mc-admin-table th {
   text-align: left;
-  padding: var(--mc-space-2) var(--mc-space-3);
+  padding: var(--mc-space-2) var(--mc-space-4);
   font-weight: 600;
-  color: var(--mc-text-muted);
+  color: var(--mc-text-secondary);
   text-transform: uppercase;
-  font-size: var(--mc-font-xs);
+  font-size: var(--mc-font-body-sm);
   letter-spacing: 0.05em;
 }
 
 .mc-admin-table td {
-  padding: var(--mc-space-3);
-  border-bottom: 1px solid var(--mc-border);
+  padding: var(--mc-space-4);
+  border-bottom: 1px solid var(--mc-border-default);
   vertical-align: top;
 }
 
@@ -2054,7 +2079,7 @@ p {
 
 @media (max-width: 768px) {
   .mc-admin-table {
-    font-size: var(--mc-font-xs);
+    font-size: var(--mc-font-body-sm);
     /* Keep columns legible and let the card scroll horizontally instead of
        crushing everything together. */
     min-width: 560px;

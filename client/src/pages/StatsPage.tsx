@@ -171,26 +171,26 @@ export const StatsPage = () => {
         <Tabs value="statistics" onChange={updateView} options={viewOptions} />
       </div>
 
-      <div className="mc-stats-layout mc-stats-layout--gold">
-        <StatsTablePane rows={categoryRows} />
+      <div className="mc-stats-charts">
+        <article className="mc-stats-card">
+          <h2 className="mc-stats-card__title">Listings by Category</h2>
+          <CategoryPieChart data={categoryRows} />
+        </article>
 
-        <div className="mc-stats-page__charts">
-          <article className="mc-stats-card">
-            <h2 className="mc-stats-card__title">Listings by Category</h2>
-            <CategoryPieChart data={categoryRows} />
-          </article>
-
-          <article className="mc-stats-card">
-            <h2 className="mc-stats-card__title">Average Price by Category</h2>
-            <CategoryBarChart data={categoryRows} />
-          </article>
-        </div>
+        <article className="mc-stats-card">
+          <h2 className="mc-stats-card__title">Average Price by Category</h2>
+          <CategoryBarChart data={categoryRows} />
+        </article>
       </div>
+
+      <StatsTablePane rows={categoryRows} />
 
       <TopSellersCard rows={topSellers} />
 
-      <StatsQuickAdd />
-      <GeneratorPanel />
+      <div className="mc-stats-tools">
+        <StatsQuickAdd />
+        <GeneratorPanel />
+      </div>
 
       {isAdmin && <AdminSection />}
     </section>
